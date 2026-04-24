@@ -778,6 +778,11 @@ static int merge_query_strings(const char *base_query,
 }
 
 service_t *service_create_from_http_url(const char *http_url) {
+#if !R2H_FEATURE_HTTP_PROXY
+  (void)http_url;
+  logger(LOG_WARN, "HTTP proxy support is disabled in this build");
+  return NULL;
+#else
   service_t *result = NULL;
   char working_url[HTTP_URL_BUFFER_SIZE];
   const char *url_part;
@@ -859,6 +864,7 @@ service_t *service_create_from_http_url(const char *http_url) {
   }
 
   return result;
+#endif
 }
 
 service_t *service_create_from_udpxy_url(char *url) {
@@ -894,6 +900,11 @@ service_t *service_create_from_udpxy_url(char *url) {
   }
 }
 service_t *service_create_from_rtsp_url(const char *http_url) {
+#if !R2H_FEATURE_RTSP
+  (void)http_url;
+  logger(LOG_WARN, "RTSP support is disabled in this build");
+  return NULL;
+#else
   service_t *result = NULL;
   char working_url[HTTP_URL_BUFFER_SIZE];
   char *url_part;
@@ -1005,6 +1016,7 @@ cleanup:
   }
 
   return NULL;
+#endif
 }
 
 service_t *service_create_with_query_merge(service_t *configured_service,
@@ -1175,9 +1187,19 @@ service_t *service_create_with_query_merge(service_t *configured_service,
          merged_url);
 
   if (expected_type == SERVICE_RTSP) {
+#if R2H_FEATURE_RTSP
     return service_create_from_rtsp_url(merged_url);
+#else
+    logger(LOG_WARN, "RTSP support is disabled in this build");
+    return NULL;
+#endif
   } else if (expected_type == SERVICE_HTTP) {
+#if R2H_FEATURE_HTTP_PROXY
     return service_create_from_http_url(merged_url);
+#else
+    logger(LOG_WARN, "HTTP proxy support is disabled in this build");
+    return NULL;
+#endif
   } else /* SERVICE_MRTP */
   {
     return service_create_from_rtp_url(merged_url);

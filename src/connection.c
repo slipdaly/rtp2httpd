@@ -37,8 +37,10 @@
 #define CONN_QUEUE_SLOW_CLAMP_FACTOR 0.8
 
 /* Forward declarations */
+#if R2H_FEATURE_M3U
 static void handle_playlist_request(connection_t *c);
 static void handle_epg_request(connection_t *c, int requested_gz);
+#endif
 
 /* Token source for r2h-token validation */
 typedef enum {
@@ -770,6 +772,7 @@ int connection_route_and_start(connection_t *c) {
     path_len--;
 
   /* Handle static assets first (bypass r2h-token validation for /assets/) */
+#if R2H_FEATURE_WEB_UI
   const char *assets_prefix = "assets/";
   size_t assets_prefix_len = strlen(assets_prefix);
   if (path_len >= assets_prefix_len &&
@@ -781,6 +784,7 @@ int connection_route_and_start(connection_t *c) {
     handle_embedded_file(c, asset_path);
     return 0;
   }
+#endif
 
   /* Check r2h-token if configured (supports URL query, Cookie, User-Agent) */
   if (config.r2h_token != NULL && config.r2h_token[0] != '\0') {
@@ -794,6 +798,7 @@ int connection_route_and_start(connection_t *c) {
     c->should_set_r2h_cookie = (source == TOKEN_SOURCE_QUERY);
   }
 
+#if R2H_FEATURE_WEB_UI
   const char *status_route =
       config.status_page_route ? config.status_page_route : "status";
   size_t status_route_len = strlen(status_route);
@@ -827,8 +832,10 @@ int connection_route_and_start(connection_t *c) {
     handle_embedded_file(c, "/player.html");
     return 0;
   }
+#endif
 
   /* Handle /playlist.m3u request */
+#if R2H_FEATURE_M3U
   const char *playlist_route = "playlist.m3u";
   size_t playlist_route_len = strlen(playlist_route);
   if (playlist_route_len == path_len &&
@@ -852,6 +859,8 @@ int connection_route_and_start(connection_t *c) {
     handle_epg_request(c, 0);
     return 0;
   }
+#endif
+#if R2H_FEATURE_WEB_UI
   size_t status_sse_len = strlen(status_sse_route);
   if (status_sse_len == path_len &&
       strncmp(service_path, status_sse_route, path_len) == 0) {
@@ -893,6 +902,7 @@ int connection_route_and_start(connection_t *c) {
     http_send_404(c);
     return 0;
   }
+#endif
 
   /* Find configured service (with URL decoding support) */
   service_t *service = NULL;
@@ -982,6 +992,7 @@ int connection_route_and_start(connection_t *c) {
   /* 1 = snapshot=1, 2 = X-Request-Snapshot or Accept: image/jpeg */
   int is_snapshot_request = 0;
 
+#if R2H_FEATURE_SNAPSHOT
   if (config.video_snapshot) {
     if (c->http_req.x_request_snapshot) {
       is_snapshot_request = 2;
@@ -1015,6 +1026,7 @@ int connection_route_and_start(connection_t *c) {
       }
     }
   }
+#endif
 
   /* Register streaming client in status tracking with service URL (skip for
    * snapshots) */
@@ -1175,6 +1187,7 @@ int connection_queue_file(connection_t *c, int file_fd, off_t file_offset,
 }
 
 /* Handle /playlist.m3u request - serve dynamically generated M3U playlist */
+#if R2H_FEATURE_M3U
 static void handle_playlist_request(connection_t *c) {
   char *playlist = NULL;
   size_t playlist_len;
@@ -1304,3 +1317,4 @@ static void handle_epg_request(connection_t *c, int requested_gz) {
     return;
   }
 }
+#endif

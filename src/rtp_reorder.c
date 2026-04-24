@@ -74,12 +74,16 @@ void rtp_reorder_cleanup(rtp_reorder_t *r)
 static int deliver_packet(buffer_ref_t *buf, connection_t *conn,
                           int is_snapshot)
 {
+#if R2H_FEATURE_SNAPSHOT
   if (is_snapshot)
   {
     return snapshot_process_packet(&conn->stream.snapshot, buf->data_size,
                                    (uint8_t *)buf->data + buf->data_offset,
                                    conn);
   }
+#else
+  (void)is_snapshot;
+#endif
   return rtp_queue_buf_direct(conn, buf);
 }
 
@@ -87,10 +91,14 @@ static int deliver_packet(buffer_ref_t *buf, connection_t *conn,
 static int deliver_raw_packet(uint8_t *data, int len, connection_t *conn,
                               int is_snapshot)
 {
+#if R2H_FEATURE_SNAPSHOT
   if (is_snapshot)
   {
     return snapshot_process_packet(&conn->stream.snapshot, len, data, conn);
   }
+#else
+  (void)is_snapshot;
+#endif
   /* Send headers lazily on first data packet (same as rtp_queue_buf_direct) */
   if (!conn->headers_sent)
   {

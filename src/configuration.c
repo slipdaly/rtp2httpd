@@ -232,6 +232,7 @@ void parse_bind_sec(char *line) {
 void parse_services_sec(char *line) {
   int i;
 
+#if R2H_FEATURE_M3U
   /* Check if this line is the start of M3U content (#EXTM3U header) */
   if (m3u_is_header(line)) {
     /* Allocate initial buffer for inline M3U */
@@ -295,6 +296,7 @@ void parse_services_sec(char *line) {
       /* This will fall through to parameter parsing below */
     }
   }
+#endif
 
   /* If we reach here with non-empty line, log it for debugging */
   /* Note: external-m3u and external-m3u-update-interval are now in [global]
@@ -596,7 +598,9 @@ int parse_config_file(const char *path) {
     return -1;
 
   /* Reset transformed M3U playlist buffer at start of config parsing */
+#if R2H_FEATURE_M3U
   m3u_reset_transformed_playlist();
+#endif
 
   while (fgets(line, MAX_LINE, cfile)) {
     i = 0;
@@ -615,6 +619,7 @@ int parse_config_file(const char *path) {
     if (line[i] == '[') { /* section change */
       /* Process any buffered M3U content before changing sections */
       if (prev_section == SEC_SERVICES) {
+#if R2H_FEATURE_M3U
         if (inline_m3u_buffer && inline_m3u_buffer_used > 0) {
           /* Parse inline M3U (EPG will be fetched async by workers) */
           m3u_parse_and_create_services(inline_m3u_buffer, "inline");
@@ -623,6 +628,7 @@ int parse_config_file(const char *path) {
           inline_m3u_buffer_size = 0;
           inline_m3u_buffer_used = 0;
         }
+#endif
       }
 
       char *end = index(line + i, ']');
@@ -676,6 +682,7 @@ int parse_config_file(const char *path) {
   }
 
   /* Process any remaining buffered inline M3U content at end of file */
+#if R2H_FEATURE_M3U
   if (section == SEC_SERVICES) {
     if (inline_m3u_buffer && inline_m3u_buffer_used > 0) {
       /* Parse inline M3U (EPG will be fetched async by workers) */
@@ -686,6 +693,7 @@ int parse_config_file(const char *path) {
       inline_m3u_buffer_used = 0;
     }
   }
+#endif
 
   fclose(cfile);
   return 0;
@@ -795,7 +803,9 @@ void config_cleanup(bool force_free) {
   service_free_all();
 
   /* Free EPG cache */
+#if R2H_FEATURE_M3U
   epg_cleanup();
+#endif
 
   /* Free string config values */
   if (!cmd_hostname_set || force_free)

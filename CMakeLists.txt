@@ -17,6 +17,29 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
 
+# ── Feature profiles ────────────────────────────────────────────────
+option(RTP2HTTPD_MINIMAL_BUILD
+  "Build a smaller binary focused on direct RTP/UDP to HTTP streaming"
+  OFF
+)
+option(RTP2HTTPD_ENABLE_WEB_UI "Embed status/player web UI assets" ON)
+option(RTP2HTTPD_ENABLE_M3U "Enable M3U playlist and EPG support" ON)
+option(RTP2HTTPD_ENABLE_RTSP "Enable RTSP input support" ON)
+option(RTP2HTTPD_ENABLE_HTTP_PROXY "Enable HTTP proxy input support" ON)
+option(RTP2HTTPD_ENABLE_SNAPSHOT "Enable video snapshot support" ON)
+option(RTP2HTTPD_ENABLE_SIZE_OPTIMIZATIONS
+  "Enable section-based dead code elimination for smaller binaries"
+  ON
+)
+
+if(RTP2HTTPD_MINIMAL_BUILD)
+  set(RTP2HTTPD_ENABLE_WEB_UI OFF CACHE BOOL "Embed status/player web UI assets" FORCE)
+  set(RTP2HTTPD_ENABLE_M3U OFF CACHE BOOL "Enable M3U playlist and EPG support" FORCE)
+  set(RTP2HTTPD_ENABLE_RTSP OFF CACHE BOOL "Enable RTSP input support" FORCE)
+  set(RTP2HTTPD_ENABLE_HTTP_PROXY OFF CACHE BOOL "Enable HTTP proxy input support" FORCE)
+  set(RTP2HTTPD_ENABLE_SNAPSHOT OFF CACHE BOOL "Enable video snapshot support" FORCE)
+endif()
+
 # ── Platform detection ──────────────────────────────────────────────
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(PLATFORM_LINUX TRUE)
@@ -84,6 +107,20 @@ target_compile_definitions(rtp2httpd PRIVATE
   VERSION="${PROJECT_VERSION_STRING}"
 )
 
+function(r2h_define_bool macro_name option_value)
+  if(${option_value})
+    target_compile_definitions(rtp2httpd PRIVATE ${macro_name}=1)
+  else()
+    target_compile_definitions(rtp2httpd PRIVATE ${macro_name}=0)
+  endif()
+endfunction()
+
+r2h_define_bool(R2H_FEATURE_WEB_UI RTP2HTTPD_ENABLE_WEB_UI)
+r2h_define_bool(R2H_FEATURE_M3U RTP2HTTPD_ENABLE_M3U)
+r2h_define_bool(R2H_FEATURE_RTSP RTP2HTTPD_ENABLE_RTSP)
+r2h_define_bool(R2H_FEATURE_HTTP_PROXY RTP2HTTPD_ENABLE_HTTP_PROXY)
+r2h_define_bool(R2H_FEATURE_SNAPSHOT RTP2HTTPD_ENABLE_SNAPSHOT)
+
 if(PLATFORM_LINUX)
   # _GNU_SOURCE implies _DEFAULT_SOURCE on glibc
   target_compile_definitions(rtp2httpd PRIVATE _GNU_SOURCE)
@@ -112,6 +149,15 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
 endif()
 
 target_compile_options(rtp2httpd PRIVATE ${WARN_FLAGS})
+
+if(RTP2HTTPD_ENABLE_SIZE_OPTIMIZATIONS)
+  target_compile_options(rtp2httpd PRIVATE -ffunction-sections -fdata-sections)
+  if(PLATFORM_MACOS)
+    target_link_options(rtp2httpd PRIVATE -Wl,-dead_strip)
+  else()
+    target_link_options(rtp2httpd PRIVATE -Wl,--gc-sections)
+  endif()
+endif()
 
 # ── Build type default ──────────────────────────────────────────────
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -166,5 +212,12 @@ message(STATUS "  Platform:       ${CMAKE_SYSTEM_NAME}")
 message(STATUS "  Compiler:       ${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
 message(STATUS "  Build type:     ${CMAKE_BUILD_TYPE}")
 message(STATUS "  Aggressive opt: ${ENABLE_AGGRESSIVE_OPT}")
+message(STATUS "  Minimal build:  ${RTP2HTTPD_MINIMAL_BUILD}")
+message(STATUS "  Size opt:       ${RTP2HTTPD_ENABLE_SIZE_OPTIMIZATIONS}")
+message(STATUS "  Web UI:         ${RTP2HTTPD_ENABLE_WEB_UI}")
+message(STATUS "  M3U/EPG:        ${RTP2HTTPD_ENABLE_M3U}")
+message(STATUS "  RTSP:           ${RTP2HTTPD_ENABLE_RTSP}")
+message(STATUS "  HTTP proxy:     ${RTP2HTTPD_ENABLE_HTTP_PROXY}")
+message(STATUS "  Snapshot:       ${RTP2HTTPD_ENABLE_SNAPSHOT}")
 message(STATUS "  Install prefix: ${CMAKE_INSTALL_PREFIX}")
 message(STATUS "")

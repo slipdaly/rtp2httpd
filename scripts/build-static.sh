@@ -44,6 +44,7 @@ SYSROOT="${TOOLCHAIN_DIR}/${TOOLCHAIN_PREFIX}/sysroot"
 
 # Build configuration
 BUILD_DIR="build-${TOOLCHAIN_PREFIX}-static"
+CMAKE_EXTRA_ARGS="${CMAKE_EXTRA_ARGS:-}"
 
 echo_step "Toolchain Configuration"
 echo_info "Release: ${TOOLCHAIN_RELEASE}"
@@ -127,6 +128,9 @@ echo_info "Build type: Release (with aggressive optimizations)"
 if [ -n "$RELEASE_VERSION" ]; then
     echo_info "Version: $RELEASE_VERSION"
 fi
+if [ -n "$CMAKE_EXTRA_ARGS" ]; then
+    echo_info "Extra CMake args: $CMAKE_EXTRA_ARGS"
+fi
 
 # Configure with CMake for static linking
 # Key flags:
@@ -144,7 +148,8 @@ RELEASE_VERSION="${RELEASE_VERSION}" cmake "${PROJECT_ROOT}" \
     -DCMAKE_INSTALL_SYSCONFDIR=/etc \
     -DCMAKE_BUILD_TYPE=Release \
     -DENABLE_AGGRESSIVE_OPT=ON \
-    -DCMAKE_SYSTEM_NAME=Linux
+    -DCMAKE_SYSTEM_NAME=Linux \
+    ${CMAKE_EXTRA_ARGS}
 
 echo ""
 echo_step "Building"

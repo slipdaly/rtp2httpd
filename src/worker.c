@@ -318,10 +318,16 @@ int worker_run_event_loop(int *listen_sockets, int num_sockets, int notif_fd) {
           }
         }
 
+#if !R2H_FEATURE_WEB_UI
+        (void)has_sse_update;
+#endif
+
         /* Handle SSE updates */
+#if R2H_FEATURE_WEB_UI
         if (has_sse_update) {
           status_handle_sse_notification(conn_head);
         }
+#endif
 
         /* Handle disconnect requests */
         if (has_disconnect_request && status_shared) {
@@ -386,6 +392,7 @@ int worker_run_event_loop(int *listen_sockets, int num_sockets, int notif_fd) {
       }
 
       /* Check if this is an async HTTP fetch fd */
+#if R2H_FEATURE_M3U
       http_fetch_ctx_t *fetch_ctx = http_fetch_find_by_fd(fd_ready);
       if (fetch_ctx) {
         /* Handle HTTP fetch event */
@@ -394,6 +401,7 @@ int worker_run_event_loop(int *listen_sockets, int num_sockets, int notif_fd) {
          * In all cases, the context handles cleanup internally */
         continue;
       }
+#endif
 
       /* Non-listener: lookup by fd map */
       connection_t *c = fdmap_get(fd_ready);
@@ -513,6 +521,7 @@ int worker_run_event_loop(int *listen_sockets, int num_sockets, int notif_fd) {
                                            events[e].events, now);
           if (res < 0) {
             /* Send 200 for r2h-duration request */
+#if R2H_FEATURE_RTSP
             if (res == -2) {
               send_http_headers(c, STATUS_200, "application/json", NULL);
               char response[64];
@@ -527,6 +536,14 @@ int worker_run_event_loop(int *listen_sockets, int num_sockets, int notif_fd) {
             } else {
               worker_close_and_free_connection(c);
             }
+#else
+            if (!c->headers_sent && c->state != CONN_CLOSING) {
+              /* Send 503 if headers not sent yet (no data ever arrived) */
+              http_send_503(c);
+            } else {
+              worker_close_and_free_connection(c);
+            }
+#endif
             continue; /* Skip further processing for this connection */
           }
         }
@@ -553,6 +570,7 @@ int worker_run_event_loop(int *listen_sockets, int num_sockets, int notif_fd) {
               continue;
             }
           }
+#if R2H_FEATURE_RTSP
         } else if (c->state == CONN_CLOSING &&
                    c->stream.rtsp.initialized &&
                    !c->stream.rtsp.cleanup_done) {
@@ -561,8 +579,11 @@ int worker_run_event_loop(int *listen_sockets, int num_sockets, int notif_fd) {
             c = next;
             continue;
           }
+#endif
+#if R2H_FEATURE_WEB_UI
         } else if (c->state == CONN_SSE) {
           status_handle_sse_heartbeat(c, now);
+#endif
         }
         c = next;
       }
@@ -570,6 +591,7 @@ int worker_run_event_loop(int *listen_sockets, int num_sockets, int notif_fd) {
       /* Check if M3U/EPG needs to be reloaded (all workers perform this with
        * staggered timing) This handles both external M3U and inline M3U's EPG
        * updates */
+#if R2H_FEATURE_M3U
       m3u_cache_t *m3u_cache = m3u_get_cache();
       epg_cache_t *epg_cache = epg_get_cache();
 
@@ -672,6 +694,7 @@ int worker_run_event_loop(int *listen_sockets, int num_sockets, int notif_fd) {
           }
         }
       }
+#endif
     }
   }
 

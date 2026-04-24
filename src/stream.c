@@ -49,10 +49,12 @@ int stream_process_rtp_payload(stream_context_t *ctx, buffer_ref_t *buf_ref) {
 
   if (pkt_type == 0) {
     /* Non-RTP packet - pass through directly (no reordering needed) */
+#if R2H_FEATURE_SNAPSHOT
     if (ctx->snapshot.initialized) {
       return snapshot_process_packet(&ctx->snapshot, buf_ref->data_size,
                                      data_ptr, ctx->conn);
     }
+#endif
     return rtp_queue_buf_direct(ctx->conn, buf_ref);
   }
 
@@ -93,6 +95,7 @@ int stream_handle_fd_event(stream_context_t *ctx, int fd, uint32_t events,
   }
 
   /* Process RTSP socket events */
+#if R2H_FEATURE_RTSP
   if (ctx->rtsp.initialized && ctx->rtsp.socket >= 0 && fd == ctx->rtsp.socket) {
     /* Handle RTSP socket events (handshake and RTP data in PLAYING state) */
     int result = rtsp_handle_socket_event(&ctx->rtsp, events);
@@ -131,8 +134,10 @@ int stream_handle_fd_event(stream_context_t *ctx, int fd, uint32_t events,
       ;
     return 0;
   }
+#endif
 
   /* Process HTTP proxy socket events */
+#if R2H_FEATURE_HTTP_PROXY
   if (ctx->http_proxy.initialized && ctx->http_proxy.socket >= 0 && fd == ctx->http_proxy.socket) {
     int result = http_proxy_handle_socket_event(&ctx->http_proxy, events);
     if (result < 0) {
@@ -144,6 +149,7 @@ int stream_handle_fd_event(stream_context_t *ctx, int fd, uint32_t events,
     }
     return 0;
   }
+#endif
 
   return 0;
 }
@@ -165,6 +171,10 @@ int stream_context_init_for_worker(stream_context_t *ctx, connection_t *conn,
 
   /* Initialize media path depending on service type */
   if (service->service_type == SERVICE_HTTP) {
+#if !R2H_FEATURE_HTTP_PROXY
+    logger(LOG_ERROR, "HTTP proxy support is disabled in this build");
+    return -1;
+#else
     /* Snapshot mode is not supported for HTTP proxy - ignore is_snapshot */
     http_proxy_session_init(&ctx->http_proxy);
     ctx->http_proxy.epoll_fd = ctx->epoll_fd;
@@ -238,10 +248,12 @@ int stream_context_init_for_worker(stream_context_t *ctx, connection_t *conn,
     }
 
     logger(LOG_DEBUG, "HTTP Proxy: Async connection initiated");
+#endif
   } else {
     /* RTP-based services (RTSP, FCC, multicast) - snapshot mode supported */
 
     /* Initialize snapshot context if this is a snapshot request */
+#if R2H_FEATURE_SNAPSHOT
     if (is_snapshot) {
       if (snapshot_init(&ctx->snapshot) < 0) {
         logger(LOG_ERROR, "Snapshot: Failed to initialize snapshot context");
@@ -252,6 +264,9 @@ int stream_context_init_for_worker(stream_context_t *ctx, connection_t *conn,
         ctx->snapshot.fallback_to_streaming = 1;
       }
     }
+#else
+    (void)is_snapshot;
+#endif
 
     /* Initialize RTP reorder and FEC (common to all RTP-based services) */
     if (rtp_reorder_init(&ctx->reorder, service->fec_port > 0) < 0) {
@@ -261,6 +276,10 @@ int stream_context_init_for_worker(stream_context_t *ctx, connection_t *conn,
     fec_init(&ctx->fec, service->fec_port, &ctx->reorder);
 
     if (service->service_type == SERVICE_RTSP) {
+#if !R2H_FEATURE_RTSP
+      logger(LOG_ERROR, "RTSP support is disabled in this build");
+      return -1;
+#else
       /* Initialize RTSP session */
       rtsp_session_init(&ctx->rtsp);
       ctx->rtsp.status_index = status_index;
@@ -291,6 +310,7 @@ int stream_context_init_for_worker(stream_context_t *ctx, connection_t *conn,
        * loop */
       logger(LOG_DEBUG, "RTSP: Async connection initiated, state=%d",
              ctx->rtsp.state);
+#endif
     } else {
       /* Multicast-based services (FCC or direct multicast) */
       mcast_session_init(&ctx->mcast);
@@ -338,14 +358,19 @@ int stream_tick(stream_context_t *ctx, int64_t now) {
   fcc_session_tick(ctx, now);
 
   /* RTSP session tick (STUN timeout, keepalive, state timeout) */
+#if R2H_FEATURE_RTSP
   if (rtsp_session_tick(&ctx->rtsp, now) < 0)
     return -1;
+#endif
 
   /* HTTP proxy session tick (state timeout) */
+#if R2H_FEATURE_HTTP_PROXY
   if (http_proxy_session_tick(&ctx->http_proxy, now) < 0)
     return -1;
+#endif
 
   /* Check snapshot timeout (5 seconds) */
+#if R2H_FEATURE_SNAPSHOT
   if (ctx->snapshot.initialized) {
     int64_t snapshot_elapsed = now - ctx->snapshot.start_time;
     if (snapshot_elapsed > SNAPSHOT_TIMEOUT_SEC * 1000) /* 5 seconds */
@@ -355,6 +380,7 @@ int stream_tick(stream_context_t *ctx, int64_t now) {
       snapshot_fallback_to_streaming(&ctx->snapshot, ctx->conn);
     }
   }
+#endif
 
   /* Update bandwidth calculation every second (skip for snapshot mode) */
   if (!ctx->snapshot.initialized && now - ctx->last_status_update >= 1000) {
@@ -381,11 +407,15 @@ int stream_tick(stream_context_t *ctx, int64_t now) {
 }
 
 int stream_context_cleanup(stream_context_t *ctx) {
+  int rtsp_async = 0;
+
   if (!ctx)
     return 0;
 
   /* Clean up snapshot resources */
+#if R2H_FEATURE_SNAPSHOT
   snapshot_cleanup(&ctx->snapshot);
+#endif
 
   /* Clean up FCC session (always safe to cleanup immediately) */
   fcc_session_cleanup(&ctx->fcc, ctx->service, ctx->epoll_fd);
@@ -394,10 +424,14 @@ int stream_context_cleanup(stream_context_t *ctx) {
   mcast_session_cleanup(&ctx->mcast, ctx->epoll_fd);
 
   /* Clean up HTTP proxy session (always synchronous) */
+#if R2H_FEATURE_HTTP_PROXY
   http_proxy_session_cleanup(&ctx->http_proxy);
+#endif
 
   /* Clean up RTSP session - this may initiate async TEARDOWN */
-  int rtsp_async = rtsp_session_cleanup(&ctx->rtsp);
+#if R2H_FEATURE_RTSP
+  rtsp_async = rtsp_session_cleanup(&ctx->rtsp);
+#endif
 
   /* Clean up FEC context (fec_cleanup owns the socket cleanup) */
   fec_cleanup(&ctx->fec, ctx->epoll_fd);
