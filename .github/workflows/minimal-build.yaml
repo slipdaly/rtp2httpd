@@ -348,14 +348,37 @@ jobs:
         env:
           ARCH: mipsel_24kc-24.10.4
           NO_SHFMT_CHECK: true
-          PACKAGES: rtp2httpd
+          PACKAGES: rtp2httpd-minimal
           V: sc
-          RTP2HTTPD_MINIMAL_BUILD: 1
+
+      - name: Capture OpenWrt CMake summary
+        run: |
+          REPORT_PATH="artifacts/openwrt-mipsel_24kc-mt7620/build-config-report.txt"
+          mkdir -p "$(dirname "${REPORT_PATH}")"
+
+          {
+            echo "== searched files =="
+            find bin/targets bin/packages build_dir -type f 2>/dev/null | sort | sed -n '1,200p'
+            echo
+            echo "== cmake summary grep =="
+            grep -R -n -E "rtp2httpd build configuration:|Minimal build:|Size opt:|Web UI:|Status:|FCC:|FEC:|M3U/EPG:|RTSP:|HTTP proxy:|Snapshot:" build_dir bin/targets bin/packages 2>/dev/null || true
+            echo
+            echo "== cmake cache grep =="
+            grep -R -n -E "RTP2HTTPD_MINIMAL_BUILD|RTP2HTTPD_ENABLE_(WEB_UI|STATUS|FCC|FEC|M3U|RTSP|HTTP_PROXY|SNAPSHOT|SIZE_OPTIMIZATIONS)|CMAKE_BUILD_TYPE|ENABLE_AGGRESSIVE_OPT" build_dir 2>/dev/null || true
+          } > "${REPORT_PATH}"
+
+          {
+            echo "### OpenWrt Build Config Report: mt7620"
+            echo
+            echo '```text'
+            sed -n '1,200p' "${REPORT_PATH}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Prepare artifact
         id: prepare
         run: |
-          PKG_PATH="$(find bin/packages/mipsel_24kc/action -maxdepth 1 -name 'rtp2httpd_*.ipk' | head -n 1)"
+          PKG_PATH="$(find bin/packages/mipsel_24kc/action -maxdepth 1 -name 'rtp2httpd-minimal_*.ipk' | head -n 1)"
 
           if [[ -z "${PKG_PATH}" ]]; then
             echo "Error: OpenWrt package not found"

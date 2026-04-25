@@ -34,11 +34,21 @@ define Build/Prepare
 	$(CP) $(CURDIR)/../../* $(PKG_BUILD_DIR)/
 endef
 
-define Package/rtp2httpd
+define Package/rtp2httpd/Default
 	SECTION:=net
 	CATEGORY:=Network
 	TITLE:=Multicast RTP/RTSP to Unicast HTTP stream converter, optimized for China IPTV
 	URL:=https://github.com/stackia/rtp2httpd
+endef
+
+define Package/rtp2httpd
+	$(call Package/rtp2httpd/Default)
+endef
+
+define Package/rtp2httpd-minimal
+	$(call Package/rtp2httpd/Default)
+	TITLE+= (minimal)
+	VARIANT:=minimal
 endef
 
 define Package/rtp2httpd/description
@@ -49,7 +59,12 @@ define Package/rtp2httpd/description
 	incoming RTP data to HTTP stream.
 endef
 
-ifeq ($(strip $(RTP2HTTPD_MINIMAL_BUILD)),1)
+define Package/rtp2httpd-minimal/description
+	Minimal build of rtp2httpd focused on direct RTP/UDP to HTTP streaming.
+	Web UI, status page, M3U/EPG, RTSP, HTTP proxy, snapshot, FCC and FEC are disabled.
+endef
+
+ifeq ($(BUILD_VARIANT),minimal)
 CMAKE_OPTIONS += \
 	-DCMAKE_BUILD_TYPE=MinSizeRel \
 	-DENABLE_AGGRESSIVE_OPT=OFF \
@@ -65,6 +80,11 @@ define Package/rtp2httpd/conffiles
 /etc/rtp2httpd.conf
 endef
 
+define Package/rtp2httpd-minimal/conffiles
+/etc/config/rtp2httpd
+/etc/rtp2httpd.conf
+endef
+
 define Package/rtp2httpd/install
 	$(INSTALL_DIR) $(1)/etc/init.d $(1)/etc/config $(1)/usr/bin
 	$(INSTALL_CONF) ./files/rtp2httpd.conf $(1)/etc/config/rtp2httpd
@@ -73,4 +93,9 @@ define Package/rtp2httpd/install
 	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/rtp2httpd $(1)/usr/bin
 endef
 
+define Package/rtp2httpd-minimal/install
+	$(call Package/rtp2httpd/install,$(1))
+endef
+
 $(eval $(call BuildPackage,rtp2httpd))
+$(eval $(call BuildPackage,rtp2httpd-minimal))
