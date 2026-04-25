@@ -10,6 +10,22 @@
 #include <stdlib.h>
 #include <string.h>
 
+static void format_bitrate(char *output, size_t output_size, uint32_t speed) {
+  uint64_t scaled;
+
+  if (speed >= 1048576U) {
+    scaled = ((uint64_t)speed * 100ULL + 524288ULL) / 1048576ULL;
+    snprintf(output, output_size, "%llu.%02llu Mbps", scaled / 100ULL,
+             scaled % 100ULL);
+  } else if (speed >= 1024U) {
+    scaled = ((uint64_t)speed * 100ULL + 512ULL) / 1024ULL;
+    snprintf(output, output_size, "%llu.%02llu Kbps", scaled / 100ULL,
+             scaled % 100ULL);
+  } else {
+    snprintf(output, output_size, "%u bps", speed);
+  }
+}
+
 uint8_t *build_fcc_request_pk_telecom(struct addrinfo *maddr,
                                       uint16_t fcc_client_nport) {
   struct sockaddr_in *maddr_sin =
@@ -150,23 +166,9 @@ int fcc_telecom_handle_server_response(stream_context_t *ctx, uint8_t *buf,
   /* Log response for debugging */
   char speed_str[32];
   char speed_after_sync_str[32];
-  if (speed >= 1048576) {
-    snprintf(speed_str, sizeof(speed_str), "%.2f Mbps", speed / 1048576.0);
-  } else if (speed >= 1024) {
-    snprintf(speed_str, sizeof(speed_str), "%.2f Kbps", speed / 1024.0);
-  } else {
-    snprintf(speed_str, sizeof(speed_str), "%u bps", speed);
-  }
-  if (speed_after_sync >= 1048576) {
-    snprintf(speed_after_sync_str, sizeof(speed_after_sync_str), "%.2f Mbps",
-             speed_after_sync / 1048576.0);
-  } else if (speed_after_sync >= 1024) {
-    snprintf(speed_after_sync_str, sizeof(speed_after_sync_str), "%.2f Kbps",
-             speed_after_sync / 1024.0);
-  } else {
-    snprintf(speed_after_sync_str, sizeof(speed_after_sync_str), "%u bps",
-             speed_after_sync);
-  }
+  format_bitrate(speed_str, sizeof(speed_str), speed);
+  format_bitrate(speed_after_sync_str, sizeof(speed_after_sync_str),
+                 speed_after_sync);
   logger(LOG_DEBUG,
          "FCC Response: FMT=3, result=%u, signal_port=%u, media_port=%u, "
          "valid_time=%u, speed=%s, speed_after_sync=%s",

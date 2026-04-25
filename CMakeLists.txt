@@ -118,6 +118,7 @@ function(r2h_define_bool macro_name option_value)
 endfunction()
 
 r2h_define_bool(R2H_FEATURE_WEB_UI RTP2HTTPD_ENABLE_WEB_UI)
+r2h_define_bool(R2H_FEATURE_MINIMAL_BUILD RTP2HTTPD_MINIMAL_BUILD)
 r2h_define_bool(R2H_FEATURE_STATUS RTP2HTTPD_ENABLE_STATUS)
 r2h_define_bool(R2H_FEATURE_M3U RTP2HTTPD_ENABLE_M3U)
 r2h_define_bool(R2H_FEATURE_RTSP RTP2HTTPD_ENABLE_RTSP)

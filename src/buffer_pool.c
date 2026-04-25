@@ -340,12 +340,17 @@ static void buffer_pool_try_shrink_pool(buffer_pool_t *pool,
         pool->segments = next;
       }
 
-      logger(LOG_DEBUG,
-             "%s: Freeing idle segment with %zu buffers (age: %.1fs, total: "
-             "%zu -> %zu)",
-             buffer_pool_name(pool), seg->num_buffers,
-             (buffer_pool_time_us() - seg->create_time_us) / 1000000.0,
-             pool->num_buffers + seg->num_buffers, pool->num_buffers);
+      {
+        unsigned long long age_tenths =
+            (unsigned long long)((buffer_pool_time_us() - seg->create_time_us) /
+                                 100000);
+        logger(LOG_DEBUG,
+               "%s: Freeing idle segment with %zu buffers (age: %llu.%01llus, "
+               "total: %zu -> %zu)",
+               buffer_pool_name(pool), seg->num_buffers, age_tenths / 10,
+               age_tenths % 10, pool->num_buffers + seg->num_buffers,
+               pool->num_buffers);
+      }
 
       free(seg->refs);
       free(seg->buffers);

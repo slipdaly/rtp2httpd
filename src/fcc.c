@@ -159,10 +159,12 @@ int fcc_session_tick(stream_context_t *ctx, int64_t now) {
     int timeout_ms = (int)(FCC_TIMEOUT_UNICAST_SEC * 1000);
 
     if (elapsed_ms >= timeout_ms) {
+      unsigned long long timeout_tenths = (unsigned long long)timeout_ms / 100;
       logger(LOG_WARN,
-             "FCC: Unicast stream interrupted (%.1f seconds), falling back "
+             "FCC: Unicast stream interrupted (%llu.%01llu seconds), falling "
+             "back "
              "to multicast",
-             FCC_TIMEOUT_UNICAST_SEC);
+             timeout_tenths / 10, timeout_tenths % 10);
       fcc_session_set_state(fcc, FCC_STATE_MCAST_ACTIVE, "Unicast interrupted");
       mcast_session_join(&ctx->mcast, ctx);
     }
@@ -450,10 +452,12 @@ int fcc_handle_sync_notification(stream_context_t *ctx, int timeout_ms) {
     return 0;
 
   if (timeout_ms) {
+    unsigned long long timeout_tenths = (unsigned long long)timeout_ms / 100;
     logger(LOG_DEBUG,
-           "FCC: Sync notification timeout reached (%.1f seconds) - joining "
+           "FCC: Sync notification timeout reached (%llu.%01llu seconds) - "
+           "joining "
            "multicast",
-           timeout_ms / 1000.0);
+           timeout_tenths / 10, timeout_tenths % 10);
   } else {
     logger(LOG_DEBUG, "FCC: Sync notification received - joining multicast");
   }

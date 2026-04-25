@@ -47,6 +47,101 @@ static void supervisor_sigusr1_handler(int signum);
 static int spawn_worker(int worker_idx);
 static void cleanup_workers(void);
 
+static void free_local_addrinfo_list(struct addrinfo *head) {
+  while (head) {
+    struct addrinfo *next = head->ai_next;
+    free(head->ai_addr);
+    free(head);
+    head = next;
+  }
+}
+
+static struct addrinfo *create_bind_addrinfo(int family, const char *node,
+                                             uint16_t port) {
+  struct addrinfo *ai = calloc(1, sizeof(*ai));
+  struct sockaddr_storage *addr = calloc(1, sizeof(*addr));
+
+  if (!ai || !addr) {
+    free(ai);
+    free(addr);
+    return NULL;
+  }
+
+  ai->ai_family = family;
+  ai->ai_socktype = SOCK_STREAM;
+  ai->ai_addr = (struct sockaddr *)addr;
+
+  if (family == AF_INET) {
+    struct sockaddr_in *sin = (struct sockaddr_in *)addr;
+    sin->sin_family = AF_INET;
+    sin->sin_port = htons(port);
+    if (!node || node[0] == '\0') {
+      sin->sin_addr.s_addr = htonl(INADDR_ANY);
+    } else if (inet_pton(AF_INET, node, &sin->sin_addr) != 1) {
+      free_local_addrinfo_list(ai);
+      return NULL;
+    }
+    ai->ai_addrlen = sizeof(*sin);
+    return ai;
+  }
+
+  if (family == AF_INET6) {
+    struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)addr;
+    sin6->sin6_family = AF_INET6;
+    sin6->sin6_port = htons(port);
+    if (!node || node[0] == '\0') {
+      sin6->sin6_addr = in6addr_any;
+    } else if (inet_pton(AF_INET6, node, &sin6->sin6_addr) != 1) {
+      free_local_addrinfo_list(ai);
+      return NULL;
+    }
+    ai->ai_addrlen = sizeof(*sin6);
+    return ai;
+  }
+
+  free_local_addrinfo_list(ai);
+  return NULL;
+}
+
+static struct addrinfo *create_bind_addrinfo_list(const char *node,
+                                                  const char *service) {
+  struct addrinfo *head = NULL;
+  struct addrinfo *tail = NULL;
+  unsigned long port_value;
+  char *endptr = NULL;
+
+  if (!service || service[0] == '\0') {
+    return NULL;
+  }
+
+  errno = 0;
+  port_value = strtoul(service, &endptr, 10);
+  if (errno != 0 || !endptr || *endptr != '\0' || port_value > 65535UL) {
+    return NULL;
+  }
+
+  if (!node || node[0] == '\0') {
+    head = create_bind_addrinfo(AF_INET6, NULL, (uint16_t)port_value);
+    if (head) {
+      tail = head;
+    }
+    tail = tail ? tail : NULL;
+    if (tail) {
+      tail->ai_next = create_bind_addrinfo(AF_INET, NULL, (uint16_t)port_value);
+    } else {
+      head = create_bind_addrinfo(AF_INET, NULL, (uint16_t)port_value);
+    }
+    return head;
+  }
+
+  head = create_bind_addrinfo(AF_INET, node, (uint16_t)port_value);
+  if (head) {
+    return head;
+  }
+
+  return create_bind_addrinfo(AF_INET6, node, (uint16_t)port_value);
+}
+
 /**
  * Signal handler for supervisor process (SIGTERM/SIGINT)
  */
@@ -451,7 +546,10 @@ int supervisor_run(void) {
 }
 
 int run_worker(void) {
-  struct addrinfo hints, *res, *ai;
+  struct addrinfo *res, *ai;
+#if !R2H_FEATURE_MINIMAL_BUILD
+  struct addrinfo hints;
+#endif
   bindaddr_t *bind_addr;
   int r;
   int s[MAX_S];
@@ -475,9 +573,11 @@ int run_worker(void) {
   logger(LOG_INFO, "Worker %d started (pid=%d)", worker_id, (int)getpid());
 
   /* Per-worker listener setup (SO_REUSEPORT allows multiple binds) */
+#if !R2H_FEATURE_MINIMAL_BUILD
   memset(&hints, 0, sizeof(hints));
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_PASSIVE;
+#endif
   maxs = 0;
   nfds = -1;
 
@@ -486,11 +586,22 @@ int run_worker(void) {
   }
 
   for (bind_addr = bind_addresses; bind_addr; bind_addr = bind_addr->next) {
+#if R2H_FEATURE_MINIMAL_BUILD
+    res = create_bind_addrinfo_list(bind_addr->node, bind_addr->service);
+    if (!res) {
+      logger(LOG_FATAL,
+             "Minimal build requires numeric bind address and port: %s:%s",
+             bind_addr->node ? bind_addr->node : "*",
+             bind_addr->service ? bind_addr->service : "");
+      return EXIT_FAILURE;
+    }
+#else
     r = getaddrinfo(bind_addr->node, bind_addr->service, &hints, &res);
     if (r) {
       logger(LOG_FATAL, "GAI: %s", gai_strerror(r));
       return EXIT_FAILURE;
     }
+#endif
 
     for (ai = res; ai && maxs < MAX_S; ai = ai->ai_next) {
       s[maxs] = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
@@ -556,7 +667,11 @@ int run_worker(void) {
         nfds = s[maxs];
       maxs++;
     }
+#if R2H_FEATURE_MINIMAL_BUILD
+    free_local_addrinfo_list(res);
+#else
     freeaddrinfo(res);
+#endif
   }
 
   if (maxs == 0) {

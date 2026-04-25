@@ -4,6 +4,8 @@
 #include "http.h"
 #include "timezone.h"
 #include "utils.h"
+#include <arpa/inet.h>
+#include <errno.h>
 #include <limits.h>
 #include <net/if.h>
 #include <netdb.h>
@@ -98,6 +100,61 @@ static int parse_address_port(const char *input, char *addr, size_t addr_size,
   }
 
   return 0;
+}
+
+static struct addrinfo *create_numeric_addrinfo(const char *host,
+                                                const char *port,
+                                                int socktype) {
+  struct addrinfo *ai = NULL;
+  struct sockaddr_storage *addr = NULL;
+  unsigned long port_value = 0;
+  char *endptr = NULL;
+
+  if (!host || host[0] == '\0') {
+    return NULL;
+  }
+
+  if (port && port[0] != '\0') {
+    errno = 0;
+    port_value = strtoul(port, &endptr, 10);
+    if (errno != 0 || !endptr || *endptr != '\0' || port_value > 65535UL) {
+      return NULL;
+    }
+  }
+
+  ai = calloc(1, sizeof(*ai));
+  addr = calloc(1, sizeof(*addr));
+  if (!ai || !addr) {
+    free(ai);
+    free(addr);
+    return NULL;
+  }
+
+  ai->ai_socktype = socktype;
+  ai->ai_addr = (struct sockaddr *)addr;
+
+  if (inet_pton(AF_INET, host, &((struct sockaddr_in *)addr)->sin_addr) == 1) {
+    struct sockaddr_in *sin = (struct sockaddr_in *)addr;
+    sin->sin_family = AF_INET;
+    sin->sin_port = htons((uint16_t)port_value);
+    ai->ai_family = AF_INET;
+    ai->ai_addrlen = sizeof(*sin);
+    return ai;
+  }
+
+  if (inet_pton(AF_INET6, host, &((struct sockaddr_in6 *)addr)->sin6_addr) ==
+      1) {
+    struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)addr;
+    sin6->sin6_family = AF_INET6;
+    sin6->sin6_port = htons((uint16_t)port_value);
+    ai->ai_family = AF_INET6;
+    ai->ai_addrlen = sizeof(*sin6);
+    return ai;
+  }
+
+  free(ai);
+  free(addr);
+  return NULL;
 }
 
 static int parse_rtp_url_components(char *url_part,
@@ -1211,11 +1268,14 @@ service_t *service_create_from_rtp_url(const char *http_url) {
   char working_url[HTTP_URL_BUFFER_SIZE];
   char *url_part;
   struct rtp_url_components components;
-  struct addrinfo hints, *res = NULL, *msrc_res = NULL, *fcc_res = NULL;
+#if !R2H_FEATURE_MINIMAL_BUILD
+  struct addrinfo *res = NULL, *msrc_res = NULL, *fcc_res = NULL;
+  struct addrinfo hints;
   struct sockaddr_storage *res_addr = NULL, *msrc_res_addr = NULL,
                           *fcc_res_addr = NULL;
   struct addrinfo *res_ai = NULL, *msrc_res_ai = NULL, *fcc_res_ai = NULL;
   int r = 0, rr = 0, rrr = 0;
+#endif
 
   /* Validate input */
   if (!http_url || strlen(http_url) >= sizeof(working_url)) {
@@ -1299,6 +1359,19 @@ service_t *service_create_from_rtp_url(const char *http_url) {
     logger(LOG_DEBUG, " fec_port=%u", components.fec_port);
   }
 
+#if R2H_FEATURE_MINIMAL_BUILD
+  /* Minimal builds accept numeric IP literals only to avoid pulling the libc
+   * DNS resolver into the binary. */
+  result->addr = create_numeric_addrinfo(components.multicast_addr,
+                                         components.multicast_port, SOCK_DGRAM);
+  if (!result->addr) {
+    logger(LOG_ERROR,
+           "Minimal build requires numeric multicast IP address: %s:%s",
+           components.multicast_addr, components.multicast_port);
+    service_free(result);
+    return NULL;
+  }
+#else
   /* Resolve addresses */
   memset(&hints, 0, sizeof(hints));
   hints.ai_socktype = SOCK_DGRAM;
@@ -1376,11 +1449,24 @@ service_t *service_create_from_rtp_url(const char *http_url) {
   res_ai->ai_canonname = NULL;
   res_ai->ai_next = NULL;
   result->addr = res_ai;
+#endif
 
   /* Set up source address */
   result->msrc_addr = NULL;
   result->msrc = NULL;
   if (components.has_source) {
+#if R2H_FEATURE_MINIMAL_BUILD
+    result->msrc_addr = create_numeric_addrinfo(
+        components.source_addr,
+        components.source_port[0] ? components.source_port : NULL, SOCK_DGRAM);
+    if (!result->msrc_addr) {
+      logger(LOG_ERROR,
+             "Minimal build requires numeric source IP address: %s",
+             components.source_addr);
+      service_free(result);
+      return NULL;
+    }
+#else
     msrc_res_addr = malloc(sizeof(struct sockaddr_storage));
     msrc_res_ai = malloc(sizeof(struct addrinfo));
     if (!msrc_res_addr || !msrc_res_ai) {
@@ -1402,6 +1488,7 @@ service_t *service_create_from_rtp_url(const char *http_url) {
     msrc_res_ai->ai_canonname = NULL;
     msrc_res_ai->ai_next = NULL;
     result->msrc_addr = msrc_res_ai;
+#endif
 
     /* Create source string for compatibility */
     char source_str[HTTP_SOURCE_STRING_SIZE];
@@ -1415,10 +1502,12 @@ service_t *service_create_from_rtp_url(const char *http_url) {
     result->msrc = strdup(source_str);
     if (!result->msrc) {
       logger(LOG_ERROR, "Failed to allocate memory for source string");
+#if !R2H_FEATURE_MINIMAL_BUILD
       freeaddrinfo(res);
       freeaddrinfo(msrc_res);
       if (fcc_res)
         freeaddrinfo(fcc_res);
+#endif
       service_free(result);
       return NULL;
     }
@@ -1426,11 +1515,13 @@ service_t *service_create_from_rtp_url(const char *http_url) {
     result->msrc = strdup("");
     if (!result->msrc) {
       logger(LOG_ERROR, "Failed to allocate memory for empty source string");
+#if !R2H_FEATURE_MINIMAL_BUILD
       freeaddrinfo(res);
       if (msrc_res)
         freeaddrinfo(msrc_res);
       if (fcc_res)
         freeaddrinfo(fcc_res);
+#endif
       service_free(result);
       return NULL;
     }
@@ -1441,6 +1532,17 @@ service_t *service_create_from_rtp_url(const char *http_url) {
   result->fcc_type = components.fcc_type;
   result->fec_port = components.fec_port;
   if (components.has_fcc) {
+#if R2H_FEATURE_MINIMAL_BUILD
+    result->fcc_addr = create_numeric_addrinfo(
+        components.fcc_addr, components.fcc_port[0] ? components.fcc_port : NULL,
+        SOCK_DGRAM);
+    if (!result->fcc_addr) {
+      logger(LOG_ERROR, "Minimal build requires numeric FCC IP address: %s",
+             components.fcc_addr);
+      service_free(result);
+      return NULL;
+    }
+#else
     fcc_res_addr = malloc(sizeof(struct sockaddr_storage));
     fcc_res_ai = malloc(sizeof(struct addrinfo));
     if (!fcc_res_addr || !fcc_res_ai) {
@@ -1461,6 +1563,7 @@ service_t *service_create_from_rtp_url(const char *http_url) {
     fcc_res_ai->ai_canonname = NULL;
     fcc_res_ai->ai_next = NULL;
     result->fcc_addr = fcc_res_ai;
+#endif
 
     /* Determine FCC type based on explicit parameter or port-based detection */
     if (components.fcc_type_explicit) {
@@ -1470,11 +1573,13 @@ service_t *service_create_from_rtp_url(const char *http_url) {
   }
 
   /* Free temporary addrinfo structures */
+#if !R2H_FEATURE_MINIMAL_BUILD
   freeaddrinfo(res);
   if (msrc_res)
     freeaddrinfo(msrc_res);
   if (fcc_res)
     freeaddrinfo(fcc_res);
+#endif
 
   /* Store original URL for reference */
   result->url = strdup(http_url);
