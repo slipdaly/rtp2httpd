@@ -1,8 +1,11 @@
 include $(TOPDIR)/rules.mk
 
+THIS_DIR:=$(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
+LUCI_NAME:=luci-app-rtp2httpd-minimal
+
 # Extract version from git tags only if current commit is tagged and clean
 RELEASE_VERSION:=$(if $(DUMP),unknown,$(shell \
-	cd $(CURDIR)/../.. 2>/dev/null && \
+	cd $(THIS_DIR)/../.. 2>/dev/null && \
 	if git describe --tags --exact-match --match 'v*' 2>/dev/null >/dev/null && \
 	   git diff --quiet 2>/dev/null && \
 	   git diff --cached --quiet 2>/dev/null; then \
