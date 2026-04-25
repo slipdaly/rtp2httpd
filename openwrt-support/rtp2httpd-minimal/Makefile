@@ -28,7 +28,12 @@ include $(INCLUDE_DIR)/cmake.mk
 
 define Build/Prepare
 	mkdir -p $(PKG_BUILD_DIR)
-	$(CP) $(CURDIR)/../../* $(PKG_BUILD_DIR)/
+	$(CP) $(CURDIR)/../../CMakeLists.txt $(PKG_BUILD_DIR)/
+	$(CP) $(CURDIR)/../../src $(PKG_BUILD_DIR)/
+	$(CP) $(CURDIR)/../../scripts $(PKG_BUILD_DIR)/
+	$(CP) $(CURDIR)/../../rtp2httpd.conf $(PKG_BUILD_DIR)/
+	$(CP) $(CURDIR)/../../LICENSE $(PKG_BUILD_DIR)/ 2>/dev/null || true
+	$(CP) $(CURDIR)/../../README.md $(PKG_BUILD_DIR)/ 2>/dev/null || true
 endef
 
 define Package/rtp2httpd-minimal
