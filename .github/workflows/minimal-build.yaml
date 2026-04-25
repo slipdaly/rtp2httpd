@@ -450,8 +450,7 @@ jobs:
                 >> .config
 
               make defconfig
-              make package/feeds/action/rtp2httpd-minimal/compile V=sc
-              make package/feeds/action/luci-app-rtp2httpd-minimal/compile V=sc
+              make package/compile V=sc
 
               mkdir -p /artifacts/meta
               cp -a bin /artifacts/

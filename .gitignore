@@ -25,3 +25,4 @@ __pycache__/
 
 # Benchmark results
 tools/benchmark_results_*.txt
+/.arts
