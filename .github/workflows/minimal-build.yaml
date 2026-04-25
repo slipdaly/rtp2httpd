@@ -73,7 +73,7 @@ jobs:
             ASSET_VERSION="${GITHUB_SHA::7}"
           fi
 
-          FILE_PREFIX="rtp2httpd-minimal"
+          FILE_PREFIX="rtp2httpd-mini"
           case "${ASSET_VERSION}" in
             *mini*|*minimal*)
               FILE_PREFIX="rtp2httpd"
@@ -132,7 +132,7 @@ jobs:
           ls -lh "${OUTPUT_DIR}/${OUTPUT_NAME}"
 
           echo "artifact_dir=${OUTPUT_DIR}" >> "$GITHUB_OUTPUT"
-          echo "artifact_name=rtp2httpd-minimal-${ARCH_SHORT}" >> "$GITHUB_OUTPUT"
+          echo "artifact_name=rtp2httpd-mini-${ARCH_SHORT}" >> "$GITHUB_OUTPUT"
           echo "binary_name=${OUTPUT_NAME}" >> "$GITHUB_OUTPUT"
 
       - name: Generate size report
@@ -250,7 +250,7 @@ jobs:
             ASSET_VERSION="${GITHUB_SHA::7}"
           fi
 
-          FILE_PREFIX="rtp2httpd-minimal"
+          FILE_PREFIX="rtp2httpd-mini"
           case "${ASSET_VERSION}" in
             *mini*|*minimal*)
               FILE_PREFIX="rtp2httpd"
@@ -298,7 +298,7 @@ jobs:
           ls -lh "${OUTPUT_DIR}/${OUTPUT_NAME}"
 
           echo "artifact_dir=${OUTPUT_DIR}" >> "$GITHUB_OUTPUT"
-          echo "artifact_name=rtp2httpd-minimal-${ARCH_SHORT}" >> "$GITHUB_OUTPUT"
+          echo "artifact_name=rtp2httpd-mini-${ARCH_SHORT}" >> "$GITHUB_OUTPUT"
           echo "binary_name=${OUTPUT_NAME}" >> "$GITHUB_OUTPUT"
 
       - name: Generate size report
@@ -528,7 +528,7 @@ jobs:
           ls -lh "${OUTPUT_DIR}/${I18N_NAME}"
 
           echo "artifact_dir=${OUTPUT_DIR}" >> "$GITHUB_OUTPUT"
-          echo "artifact_name=rtp2httpd-minimal-openwrt-mipsel_24kc" >> "$GITHUB_OUTPUT"
+          echo "artifact_name=rtp2httpd-mini-openwrt-mipsel_24kc" >> "$GITHUB_OUTPUT"
           echo "package_name=${OUTPUT_NAME}" >> "$GITHUB_OUTPUT"
           echo "luci_name=${LUCI_NAME}" >> "$GITHUB_OUTPUT"
           echo "i18n_name=${I18N_NAME}" >> "$GITHUB_OUTPUT"
