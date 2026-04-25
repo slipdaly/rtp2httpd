@@ -406,7 +406,7 @@ jobs:
             ASSET_VERSION="${GITHUB_SHA::7}"
           fi
 
-          FILE_PREFIX="rtp2httpd-minimal"
+          FILE_PREFIX="rtp2httpd-mini"
           case "${ASSET_VERSION}" in
             *mini*|*minimal*)
               FILE_PREFIX="rtp2httpd"
@@ -515,8 +515,8 @@ jobs:
 
           OUTPUT_DIR="artifacts/openwrt-mipsel_24kc-mt7620"
           OUTPUT_NAME="${FILE_PREFIX}-${ASSET_VERSION}-openwrt-mipsel_24kc.ipk"
-          LUCI_NAME="$(basename "${LUCI_PATH}")"
-          I18N_NAME="$(basename "${I18N_PATH}")"
+          LUCI_NAME="luci-app-rtp2httpd-mini-${ASSET_VERSION}-all.ipk"
+          I18N_NAME="luci-i18n-rtp2httpd-mini-zh-cn-${ASSET_VERSION}-all.ipk"
 
           mkdir -p "${OUTPUT_DIR}"
           cp "${PKG_PATH}" "${OUTPUT_DIR}/${OUTPUT_NAME}"
