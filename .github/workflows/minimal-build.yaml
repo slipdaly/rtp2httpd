@@ -381,7 +381,7 @@ jobs:
           PACKAGE_PATH="${{ steps.prepare.outputs.artifact_dir }}/${{ steps.prepare.outputs.package_name }}"
 
           cd "${EXTRACT_DIR}"
-          mkdir data
+          mkdir package-root payload
 
           if ar t "${GITHUB_WORKSPACE}/${PACKAGE_PATH}" >/dev/null 2>&1; then
             ar x "${GITHUB_WORKSPACE}/${PACKAGE_PATH}"
@@ -397,9 +397,28 @@ jobs:
               find . -maxdepth 1 -type f | sort
               exit 1
             fi
-            tar -xf "${DATA_ARCHIVE}" -C data
+            tar -xf "${DATA_ARCHIVE}" -C payload
           else
-            tar -xf "${GITHUB_WORKSPACE}/${PACKAGE_PATH}" -C data
+            tar -xf "${GITHUB_WORKSPACE}/${PACKAGE_PATH}" -C package-root
+
+            DATA_ARCHIVE=""
+            for candidate in \
+              package-root/data.tar.gz \
+              package-root/data.tar.xz \
+              package-root/data.tar.zst \
+              package-root/data.tar.bz2 \
+              package-root/data.tar; do
+              if [[ -f "${candidate}" ]]; then
+                DATA_ARCHIVE="${candidate}"
+                break
+              fi
+            done
+
+            if [[ -n "${DATA_ARCHIVE}" ]]; then
+              tar -xf "${DATA_ARCHIVE}" -C payload
+            else
+              cp -a package-root/. payload/
+            fi
           fi
 
           {
@@ -412,23 +431,26 @@ jobs:
             echo "== package file =="
             file "${GITHUB_WORKSPACE}/${PACKAGE_PATH}"
             echo
-            echo "== package contents =="
-            find data -type f | sort
+            echo "== package root contents =="
+            find package-root -type f | sort
             echo
-            if [[ -f "data/usr/bin/rtp2httpd" ]]; then
+            echo "== payload contents =="
+            find payload -type f | sort
+            echo
+            if [[ -f "payload/usr/bin/rtp2httpd" ]]; then
               echo "== binary file =="
-              file "data/usr/bin/rtp2httpd"
+              file "payload/usr/bin/rtp2httpd"
               echo
               echo "== binary ls -lh =="
-              ls -lh "data/usr/bin/rtp2httpd"
+              ls -lh "payload/usr/bin/rtp2httpd"
               echo
               echo "== dynamic section =="
-              readelf -d "data/usr/bin/rtp2httpd" || true
+              readelf -d "payload/usr/bin/rtp2httpd" || true
               echo
               echo "== section headers =="
-              readelf -S "data/usr/bin/rtp2httpd" || true
+              readelf -S "payload/usr/bin/rtp2httpd" || true
             else
-              echo "Binary data/usr/bin/rtp2httpd not found in package"
+              echo "Binary payload/usr/bin/rtp2httpd not found in package"
             fi
           } > "${GITHUB_WORKSPACE}/${REPORT_PATH}"
 
