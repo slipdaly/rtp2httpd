@@ -8,12 +8,18 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+#if R2H_FEATURE_STATUS
 #define WORKER_STATS_INC(field)                                                \
   do {                                                                         \
     if (status_shared && worker_id >= 0 && worker_id < STATUS_MAX_WORKERS) {   \
       status_shared->worker_stats[worker_id].field++;                          \
     }                                                                          \
   } while (0)
+#else
+#define WORKER_STATS_INC(field)                                                \
+  do {                                                                         \
+  } while (0)
+#endif
 
 static uint64_t buffer_pool_time_us(void) {
   struct timeval tv;
@@ -22,6 +28,10 @@ static uint64_t buffer_pool_time_us(void) {
 }
 
 void buffer_pool_update_stats(buffer_pool_t *pool) {
+#if !R2H_FEATURE_STATUS
+  (void)pool;
+  return;
+#else
   if (!status_shared || worker_id < 0 || worker_id >= STATUS_MAX_WORKERS)
     return;
 
@@ -36,6 +46,7 @@ void buffer_pool_update_stats(buffer_pool_t *pool) {
     stats->control_pool_free_buffers = pool->num_free;
     stats->control_pool_max_buffers = pool->max_buffers;
   }
+#endif
 }
 
 static buffer_pool_segment_t *buffer_pool_segment_create(size_t buffer_size,

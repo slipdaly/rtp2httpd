@@ -12,10 +12,12 @@ int main(int argc, char *argv[]) {
   parse_cmd_line(argc, argv);
 
   /* Initialize status tracking system (before fork, shared memory) */
+#if R2H_FEATURE_STATUS
   if (status_init() != 0) {
     logger(LOG_ERROR, "Failed to initialize status tracking");
     /* Continue anyway - status page won't work but streaming will */
   }
+#endif
 
   logger(LOG_INFO, "Starting rtp2httpd with %d worker(s)", config.workers);
   return supervisor_run();

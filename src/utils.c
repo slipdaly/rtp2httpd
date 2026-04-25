@@ -95,9 +95,11 @@ int logger(loglevel_t level, const char *format, ...) {
 
   /* Check log level from shared memory if available, otherwise use config */
   loglevel_t current_level = config.verbosity;
+#if R2H_FEATURE_STATUS
   if (status_shared) {
     current_level = status_shared->current_log_level;
   }
+#endif
 
   if (current_level >= level) {
     if (worker_id == SUPERVISOR_WORKER_ID) {
@@ -116,7 +118,9 @@ int logger(loglevel_t level, const char *format, ...) {
     r = fputs(message, stdout);
 
     /* Store in status log buffer */
+#if R2H_FEATURE_STATUS
     status_add_log_entry(level, message);
+#endif
 
     // Automatically add newline if format doesn't end with one
     if (format && strlen(format) > 0 && format[strlen(format) - 1] != '\n') {

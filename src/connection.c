@@ -662,6 +662,7 @@ int connection_route_and_start(connection_t *c) {
   http_strip_url_label(url_buf);
   const char *url = url_buf;
 
+#if R2H_FEATURE_STATUS
   /* Format client address string (will be overridden by X-Forwarded-For if
    * present later) */
   char client_addr_str[NI_MAXHOST + NI_MAXSERV + 4] = "unknown";
@@ -685,6 +686,10 @@ int connection_route_and_start(connection_t *c) {
 
   logger(LOG_INFO, "New client %s requested URL: %s (method: %s)",
          client_addr_str, url, c->http_req.method);
+#else
+  logger(LOG_INFO, "New client requested URL: %s (method: %s)", url,
+         c->http_req.method);
+#endif
 
   if (url[0] != '/') {
     http_send_400(c);
@@ -799,6 +804,7 @@ int connection_route_and_start(connection_t *c) {
   }
 
 #if R2H_FEATURE_WEB_UI
+#if R2H_FEATURE_STATUS
   const char *status_route =
       config.status_page_route ? config.status_page_route : "status";
   size_t status_route_len = strlen(status_route);
@@ -822,6 +828,7 @@ int connection_route_and_start(connection_t *c) {
     handle_embedded_file(c, "/status.html");
     return 0;
   }
+#endif
 
   /* Handle player page */
   const char *player_route =
@@ -860,7 +867,7 @@ int connection_route_and_start(connection_t *c) {
     return 0;
   }
 #endif
-#if R2H_FEATURE_WEB_UI
+#if R2H_FEATURE_WEB_UI && R2H_FEATURE_STATUS
   size_t status_sse_len = strlen(status_sse_route);
   if (status_sse_len == path_len &&
       strncmp(service_path, status_sse_route, path_len) == 0) {
@@ -902,6 +909,7 @@ int connection_route_and_start(connection_t *c) {
     http_send_404(c);
     return 0;
   }
+#endif
 #endif
 
   /* Find configured service (with URL decoding support) */
@@ -1031,6 +1039,7 @@ int connection_route_and_start(connection_t *c) {
   /* Register streaming client in status tracking with service URL (skip for
    * snapshots) */
   if (c->client_addr_len > 0) {
+#if R2H_FEATURE_STATUS
     /* Build display URL with decoded service name and query parameters */
     char display_url[HTTP_URL_BUFFER_SIZE];
     size_t url_len = 0;
@@ -1078,6 +1087,9 @@ int connection_route_and_start(connection_t *c) {
       logger(LOG_ERROR,
              "Failed to register streaming client in status tracking");
     }
+#else
+    c->status_index = -1;
+#endif
   } else {
     c->status_index = -1;
   }

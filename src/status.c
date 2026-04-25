@@ -13,6 +13,8 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
+#if R2H_FEATURE_STATUS
+
 /* Helper: escape JSON string into out buffer */
 static void json_escape_string(const char *in, char *out, size_t out_sz) {
   const unsigned char *src = (const unsigned char *)in;
@@ -1077,3 +1079,87 @@ int status_handle_sse_heartbeat(connection_t *c, int64_t now) {
 
   return 0;
 }
+
+#else
+
+status_shared_t *status_shared = NULL;
+
+int status_init(void) { return 0; }
+void status_cleanup(void) {}
+int status_register_client(const char *client_addr_str, const char *service_url) {
+  (void)client_addr_str;
+  (void)service_url;
+  return -1;
+}
+void status_unregister_client(int status_index) { (void)status_index; }
+void status_update_client_bytes(int status_index, uint64_t bytes_sent,
+                                uint32_t current_bandwidth) {
+  (void)status_index;
+  (void)bytes_sent;
+  (void)current_bandwidth;
+}
+void status_update_client_state(int status_index, client_state_type_t state) {
+  (void)status_index;
+  (void)state;
+}
+void status_update_client_queue(int status_index, size_t queue_bytes,
+                                size_t queue_buffers, size_t queue_limit_bytes,
+                                size_t queue_bytes_highwater,
+                                size_t queue_buffers_highwater,
+                                uint64_t dropped_packets,
+                                uint64_t dropped_bytes,
+                                uint32_t backpressure_events,
+                                int slow_active) {
+  (void)status_index;
+  (void)queue_bytes;
+  (void)queue_buffers;
+  (void)queue_limit_bytes;
+  (void)queue_bytes_highwater;
+  (void)queue_buffers_highwater;
+  (void)dropped_packets;
+  (void)dropped_bytes;
+  (void)backpressure_events;
+  (void)slow_active;
+}
+void status_add_log_entry(loglevel_t level, const char *message) {
+  (void)level;
+  (void)message;
+}
+void handle_disconnect_client(connection_t *c) {
+  (void)c;
+}
+void handle_clear_logs(connection_t *c) { (void)c; }
+void handle_set_log_level(connection_t *c) { (void)c; }
+void handle_reload_config(connection_t *c) { (void)c; }
+void handle_restart_workers(connection_t *c) { (void)c; }
+int status_worker_get_notif_fd(void) { return -1; }
+void status_trigger_event(status_event_type_t event_type) { (void)event_type; }
+const char *status_get_log_level_name(loglevel_t level) {
+  (void)level;
+  return "disabled";
+}
+int status_build_sse_json(char *buffer, size_t buffer_capacity,
+                          int *p_sent_initial, int *p_last_write_index,
+                          int *p_last_log_count) {
+  (void)buffer;
+  (void)buffer_capacity;
+  (void)p_sent_initial;
+  (void)p_last_write_index;
+  (void)p_last_log_count;
+  return 0;
+}
+int status_handle_sse_init(connection_t *c) {
+  (void)c;
+  return -1;
+}
+int status_handle_sse_notification(connection_t *conn_head) {
+  (void)conn_head;
+  return 0;
+}
+int status_handle_sse_heartbeat(connection_t *c, int64_t now) {
+  (void)c;
+  (void)now;
+  return -1;
+}
+
+#endif

@@ -325,11 +325,14 @@ int worker_run_event_loop(int *listen_sockets, int num_sockets, int notif_fd) {
         /* Handle SSE updates */
 #if R2H_FEATURE_WEB_UI
         if (has_sse_update) {
+#if R2H_FEATURE_STATUS
           status_handle_sse_notification(conn_head);
+#endif
         }
 #endif
 
         /* Handle disconnect requests */
+#if R2H_FEATURE_STATUS
         if (has_disconnect_request && status_shared) {
           connection_t *c = conn_head;
           while (c) {
@@ -347,6 +350,7 @@ int worker_run_event_loop(int *listen_sockets, int num_sockets, int notif_fd) {
             c = next;
           }
         }
+#endif
 
         continue;
       }
@@ -582,7 +586,9 @@ int worker_run_event_loop(int *listen_sockets, int num_sockets, int notif_fd) {
 #endif
 #if R2H_FEATURE_WEB_UI
         } else if (c->state == CONN_SSE) {
+#if R2H_FEATURE_STATUS
           status_handle_sse_heartbeat(c, now);
+#endif
 #endif
         }
         c = next;
@@ -625,7 +631,11 @@ int worker_run_event_loop(int *listen_sockets, int num_sockets, int notif_fd) {
         else if (last_update == 0) {
           /* Calculate uptime to compare against staggered offset */
           int64_t uptime_ms =
+#if R2H_FEATURE_STATUS
               get_realtime_ms() - status_shared->server_start_time;
+#else
+              0;
+#endif
 
           /* Each worker loads after a staggered delay from startup (0s, 1s, 2s,
            * ...) */

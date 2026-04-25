@@ -21,12 +21,18 @@ zerocopy_state_t zerocopy_state = {0};
  * Helper macro to access this worker's statistics in shared memory
  * Falls back to no-op if shared memory not available
  */
+#if R2H_FEATURE_STATUS
 #define WORKER_STATS_INC(field)                                                \
   do {                                                                         \
     if (status_shared && worker_id >= 0 && worker_id < STATUS_MAX_WORKERS) {   \
       status_shared->worker_stats[worker_id].field++;                          \
     }                                                                          \
   } while (0)
+#else
+#define WORKER_STATS_INC(field)                                                \
+  do {                                                                         \
+  } while (0)
+#endif
 
 /**
  * Detect MSG_ZEROCOPY support by attempting to enable it on a test socket
@@ -62,12 +68,14 @@ int zerocopy_init(void) {
     return 0;
 
   /* Initialize per-worker statistics in shared memory */
+#if R2H_FEATURE_STATUS
   if (status_shared && worker_id >= 0 && worker_id < STATUS_MAX_WORKERS) {
     memset(&status_shared->worker_stats[worker_id], 0, sizeof(worker_stats_t));
   }
   if (status_shared && worker_id >= 0 && worker_id < STATUS_MAX_WORKERS) {
     status_shared->worker_stats[worker_id].worker_pid = getpid();
   }
+#endif
 
   /* Check if zerocopy is explicitly enabled by configuration */
   if (config.zerocopy_on_send) {

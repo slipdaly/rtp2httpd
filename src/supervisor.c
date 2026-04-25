@@ -5,6 +5,7 @@
 #include "utils.h"
 #include "worker.h"
 #include "zerocopy.h"
+#include <arpa/inet.h>
 #include <errno.h>
 #include <netdb.h>
 #include <signal.h>
@@ -455,12 +456,12 @@ int run_worker(void) {
   int r;
   int s[MAX_S];
   int maxs, nfds;
-  char hbuf[NI_MAXHOST], sbuf[NI_MAXSERV];
   const int on = 1;
   int notif_fd = -1;
 
   /* Get notification pipe read fd for this worker (after fork)
    * This also closes read fds for other workers to avoid fd leaks */
+#if R2H_FEATURE_STATUS
   if (status_shared) {
     notif_fd = status_worker_get_notif_fd();
     if (notif_fd < 0) {
@@ -469,6 +470,7 @@ int run_worker(void) {
     if (worker_id >= 0 && worker_id < STATUS_MAX_WORKERS)
       status_shared->worker_stats[worker_id].worker_pid = getpid();
   }
+#endif
 
   logger(LOG_INFO, "Worker %d started (pid=%d)", worker_id, (int)getpid());
 
@@ -529,12 +531,25 @@ int run_worker(void) {
         close(s[maxs]);
         continue;
       }
-      r = getnameinfo(ai->ai_addr, ai->ai_addrlen, hbuf, sizeof(hbuf), sbuf,
-                      sizeof(sbuf), NI_NUMERICHOST | NI_NUMERICSERV);
-      if (r) {
-        logger(LOG_ERROR, "getnameinfo failed: %s", gai_strerror(r));
-      } else {
-        logger(LOG_INFO, "Listening on %s port %s", hbuf, sbuf);
+      {
+        char addr_buf[INET6_ADDRSTRLEN + 2] = "unknown";
+        unsigned short port = 0;
+
+        if (ai->ai_family == AF_INET) {
+          struct sockaddr_in *sin = (struct sockaddr_in *)ai->ai_addr;
+          inet_ntop(AF_INET, &sin->sin_addr, addr_buf, sizeof(addr_buf));
+          port = ntohs(sin->sin_port);
+        } else if (ai->ai_family == AF_INET6) {
+          char ipv6_buf[INET6_ADDRSTRLEN];
+          struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)ai->ai_addr;
+          if (inet_ntop(AF_INET6, &sin6->sin6_addr, ipv6_buf,
+                        sizeof(ipv6_buf))) {
+            snprintf(addr_buf, sizeof(addr_buf), "[%s]", ipv6_buf);
+          }
+          port = ntohs(sin6->sin6_port);
+        }
+
+        logger(LOG_INFO, "Listening on %s port %u", addr_buf, port);
       }
 
       if (s[maxs] > nfds)

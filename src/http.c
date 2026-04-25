@@ -90,19 +90,41 @@ void send_http_headers(connection_t *c, http_status_t status,
 int http_url_decode(char *str) {
   char *src = str;
   char *dst = str;
-  unsigned int hex_value;
+  unsigned char hi, lo;
 
   if (!str)
     return -1;
 
+  /* Small inline hex parser avoids pulling scanf/vfscanf into tiny static
+   * builds. */
   while (*src) {
     if (*src == '%') {
-      if (strlen(src) >= 3 && sscanf(src + 1, "%2x", &hex_value) == 1) {
-        *dst++ = (char)hex_value;
-        src += 3;
+      if (!src[1] || !src[2]) {
+        return -1;
+      }
+
+      if (src[1] >= '0' && src[1] <= '9') {
+        hi = (unsigned char)(src[1] - '0');
+      } else if (src[1] >= 'A' && src[1] <= 'F') {
+        hi = (unsigned char)(src[1] - 'A' + 10);
+      } else if (src[1] >= 'a' && src[1] <= 'f') {
+        hi = (unsigned char)(src[1] - 'a' + 10);
       } else {
         return -1;
       }
+
+      if (src[2] >= '0' && src[2] <= '9') {
+        lo = (unsigned char)(src[2] - '0');
+      } else if (src[2] >= 'A' && src[2] <= 'F') {
+        lo = (unsigned char)(src[2] - 'A' + 10);
+      } else if (src[2] >= 'a' && src[2] <= 'f') {
+        lo = (unsigned char)(src[2] - 'a' + 10);
+      } else {
+        return -1;
+      }
+
+      *dst++ = (char)((hi << 4) | lo);
+      src += 3;
     } else {
       *dst++ = *src++;
     }
