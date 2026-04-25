@@ -348,7 +348,6 @@ jobs:
         env:
           ARCH: mipsel_24kc-24.10.4
           NO_SHFMT_CHECK: true
-          PACKAGES: rtp2httpd-minimal
           V: sc
 
       - name: Capture OpenWrt CMake summary
