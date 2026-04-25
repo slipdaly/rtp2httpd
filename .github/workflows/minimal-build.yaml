@@ -424,6 +424,7 @@ jobs:
           SDK_OUT="${GITHUB_WORKSPACE}/openwrt-sdk-out"
           rm -rf "${SDK_OUT}"
           mkdir -p "${SDK_OUT}"
+          chmod 0777 "${SDK_OUT}"
 
           docker pull ghcr.io/openwrt/sdk:mipsel_24kc-24.10.4
 
