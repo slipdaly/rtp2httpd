@@ -11,6 +11,7 @@
 #include <stdint.h>
 
 #include "buffer_pool.h"
+#if R2H_FEATURE_FEC
 #include "rs_fec.h"
 
 /* Maximum number of FEC groups to track per stream */
@@ -149,5 +150,75 @@ void fec_release_expired_groups(fec_context_t *ctx, uint16_t base_seq);
 static inline int fec_is_enabled(const fec_context_t *ctx) {
   return ctx && (ctx->fec_port > 0 || ctx->fec_active);
 }
+
+#else
+
+/* Forward declaration for rtp_reorder_t */
+typedef struct rtp_reorder_s rtp_reorder_t;
+
+typedef struct fec_context_s {
+  int initialized;
+  int sock;
+  uint16_t fec_port;
+  uint8_t fec_active;
+  uint16_t min_end_seq;
+  uint8_t min_end_seq_valid;
+  uint64_t packets_lost;
+  uint64_t recovery_successes;
+} fec_context_t;
+
+static inline void fec_init(fec_context_t *ctx, uint16_t fec_port,
+                            rtp_reorder_t *reorder) {
+  (void)reorder;
+  if (!ctx)
+    return;
+  ctx->initialized = 0;
+  ctx->sock = -1;
+  ctx->fec_port = fec_port;
+  ctx->fec_active = 0;
+  ctx->min_end_seq = 0;
+  ctx->min_end_seq_valid = 0;
+  ctx->packets_lost = 0;
+  ctx->recovery_successes = 0;
+}
+
+static inline void fec_cleanup(fec_context_t *ctx, int epoll_fd) {
+  (void)epoll_fd;
+  if (!ctx)
+    return;
+  ctx->initialized = 0;
+  ctx->sock = -1;
+}
+
+static inline int fec_process_packet(fec_context_t *ctx, const uint8_t *data,
+                                     int len) {
+  (void)ctx;
+  (void)data;
+  (void)len;
+  return -1;
+}
+
+static inline int fec_attempt_recovery(fec_context_t *ctx, uint16_t seq,
+                                       uint8_t **recovered_data,
+                                       int *recovered_len) {
+  (void)ctx;
+  (void)seq;
+  (void)recovered_data;
+  (void)recovered_len;
+  return -1;
+}
+
+static inline void fec_release_expired_groups(fec_context_t *ctx,
+                                              uint16_t base_seq) {
+  (void)ctx;
+  (void)base_seq;
+}
+
+static inline int fec_is_enabled(const fec_context_t *ctx) {
+  (void)ctx;
+  return 0;
+}
+
+#endif
 
 #endif /* RTP_FEC_H */

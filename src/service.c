@@ -212,6 +212,7 @@ static int parse_rtp_url_components(char *url_part,
       }
     }
 
+#if R2H_FEATURE_FEC
     /* Parse FEC port parameter from query string */
     char fec_port_value[16];
     if (http_parse_query_param(query_start, "fec", fec_port_value,
@@ -224,6 +225,7 @@ static int parse_rtp_url_components(char *url_part,
         }
       }
     }
+#endif
   }
 
   /* Remove trailing slash from main part if present (e.g.,
@@ -1355,7 +1357,7 @@ service_t *service_create_from_rtp_url(const char *http_url) {
   if (components.has_fcc) {
     logger(LOG_DEBUG, " fcc=%s:%s", components.fcc_addr, components.fcc_port);
   }
-  if (components.fec_port > 0) {
+  if (R2H_FEATURE_FEC && components.fec_port > 0) {
     logger(LOG_DEBUG, " fec_port=%u", components.fec_port);
   }
 
@@ -1530,7 +1532,7 @@ service_t *service_create_from_rtp_url(const char *http_url) {
   /* Set up FCC address */
   result->fcc_addr = NULL;
   result->fcc_type = components.fcc_type;
-  result->fec_port = components.fec_port;
+  result->fec_port = R2H_FEATURE_FEC ? components.fec_port : 0;
   if (components.has_fcc) {
 #if R2H_FEATURE_MINIMAL_BUILD
     result->fcc_addr = create_numeric_addrinfo(

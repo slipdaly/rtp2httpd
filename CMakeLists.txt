@@ -28,6 +28,7 @@ option(RTP2HTTPD_ENABLE_M3U "Enable M3U playlist and EPG support" ON)
 option(RTP2HTTPD_ENABLE_RTSP "Enable RTSP input support" ON)
 option(RTP2HTTPD_ENABLE_HTTP_PROXY "Enable HTTP proxy input support" ON)
 option(RTP2HTTPD_ENABLE_SNAPSHOT "Enable video snapshot support" ON)
+option(RTP2HTTPD_ENABLE_FEC "Enable RTP FEC packet recovery" ON)
 option(RTP2HTTPD_ENABLE_SIZE_OPTIMIZATIONS
   "Enable section-based dead code elimination for smaller binaries"
   ON
@@ -40,6 +41,7 @@ if(RTP2HTTPD_MINIMAL_BUILD)
   set(RTP2HTTPD_ENABLE_RTSP OFF CACHE BOOL "Enable RTSP input support" FORCE)
   set(RTP2HTTPD_ENABLE_HTTP_PROXY OFF CACHE BOOL "Enable HTTP proxy input support" FORCE)
   set(RTP2HTTPD_ENABLE_SNAPSHOT OFF CACHE BOOL "Enable video snapshot support" FORCE)
+  set(RTP2HTTPD_ENABLE_FEC OFF CACHE BOOL "Enable RTP FEC packet recovery" FORCE)
 endif()
 
 # ── Platform detection ──────────────────────────────────────────────
@@ -61,8 +63,6 @@ set(COMMON_SOURCES
   src/service.c
   src/rtp.c
   src/rtp_reorder.c
-  src/rtp_fec.c
-  src/rs_fec.c
   src/multicast.c
   src/fcc.c
   src/fcc_telecom.c
@@ -86,6 +86,13 @@ set(COMMON_SOURCES
   src/embedded_web.c
   src/utils.c
 )
+
+if(RTP2HTTPD_ENABLE_FEC)
+  list(APPEND COMMON_SOURCES
+    src/rtp_fec.c
+    src/rs_fec.c
+  )
+endif()
 
 # Platform-specific poller backend
 if(PLATFORM_LINUX)
@@ -119,6 +126,7 @@ endfunction()
 
 r2h_define_bool(R2H_FEATURE_WEB_UI RTP2HTTPD_ENABLE_WEB_UI)
 r2h_define_bool(R2H_FEATURE_MINIMAL_BUILD RTP2HTTPD_MINIMAL_BUILD)
+r2h_define_bool(R2H_FEATURE_FEC RTP2HTTPD_ENABLE_FEC)
 r2h_define_bool(R2H_FEATURE_STATUS RTP2HTTPD_ENABLE_STATUS)
 r2h_define_bool(R2H_FEATURE_M3U RTP2HTTPD_ENABLE_M3U)
 r2h_define_bool(R2H_FEATURE_RTSP RTP2HTTPD_ENABLE_RTSP)
@@ -220,6 +228,7 @@ message(STATUS "  Minimal build:  ${RTP2HTTPD_MINIMAL_BUILD}")
 message(STATUS "  Size opt:       ${RTP2HTTPD_ENABLE_SIZE_OPTIMIZATIONS}")
 message(STATUS "  Web UI:         ${RTP2HTTPD_ENABLE_WEB_UI}")
 message(STATUS "  Status:         ${RTP2HTTPD_ENABLE_STATUS}")
+message(STATUS "  FEC:            ${RTP2HTTPD_ENABLE_FEC}")
 message(STATUS "  M3U/EPG:        ${RTP2HTTPD_ENABLE_M3U}")
 message(STATUS "  RTSP:           ${RTP2HTTPD_ENABLE_RTSP}")
 message(STATUS "  HTTP proxy:     ${RTP2HTTPD_ENABLE_HTTP_PROXY}")

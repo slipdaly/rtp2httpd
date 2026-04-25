@@ -117,7 +117,9 @@ static int flush_consecutive(rtp_reorder_t *r, connection_t *conn,
   int total_bytes = 0;
   int flushed = 0;
   uint16_t start_seq = r->base_seq;
+#if R2H_FEATURE_FEC
   int keep_for_fec = fec && fec_is_enabled(fec);
+#endif
 
   while (r->count > 0)
   {
@@ -131,12 +133,14 @@ static int flush_consecutive(rtp_reorder_t *r, connection_t *conn,
     if (bytes > 0)
       total_bytes += bytes;
 
+ #if R2H_FEATURE_FEC
     if (keep_for_fec)
     {
       /* FEC enabled: keep buffer in slot for potential FEC recovery.
        * Slot will be overwritten when ring buffer wraps around. */
     }
     else
+#endif
     {
       /* FEC disabled: release buffer immediately for efficiency */
       buffer_ref_put(buf);
@@ -156,11 +160,13 @@ static int flush_consecutive(rtp_reorder_t *r, connection_t *conn,
 
   /* Release expired FEC groups when base_seq advances past their end_seq.
    * This frees both FEC parity data and RTP buffers that are no longer needed. */
+ #if R2H_FEATURE_FEC
   if (fec && fec->min_end_seq_valid &&
       (int16_t)(r->base_seq - fec->min_end_seq) > 0)
   {
     fec_release_expired_groups(fec, r->base_seq);
   }
+#endif
 
   return total_bytes;
 }
@@ -201,10 +207,12 @@ static int force_flush_until(rtp_reorder_t *r, uint16_t target_seq,
     logger(LOG_DEBUG, "RTP reorder: Packet loss at seq %u (target=%u)",
            start_seq, target_seq);
     /* Update FEC statistics */
+#if R2H_FEATURE_FEC
     if (fec)
     {
       fec->packets_lost += lost_count;
     }
+#endif
   }
 
   return total_bytes;
@@ -325,6 +333,7 @@ int rtp_reorder_insert(rtp_reorder_t *r, buffer_ref_t *buf_ref, uint16_t seqn,
   /* Case 4: Try FEC recovery for base_seq (hole detected)
    * Now that this packet is stored, we have more data available for recovery.
    * Try to recover the missing base_seq packet using FEC. */
+ #if R2H_FEATURE_FEC
   if (fec && fec_is_enabled(fec))
   {
     uint8_t *recovered_data = NULL;
@@ -348,6 +357,7 @@ int rtp_reorder_insert(rtp_reorder_t *r, buffer_ref_t *buf_ref, uint16_t seqn,
       total_bytes += flush_consecutive(r, conn, is_snapshot, 0, fec);
     }
   }
+#endif
 
   return total_bytes;
 }

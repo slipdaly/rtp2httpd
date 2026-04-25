@@ -41,9 +41,11 @@ int stream_process_rtp_payload(stream_context_t *ctx, buffer_ref_t *buf_ref) {
 
   if (pkt_type == 2) {
     /* FEC packet received on RTP socket - process it for recovery */
+#if R2H_FEATURE_FEC
     if (ctx->fec.initialized) {
       fec_process_packet(&ctx->fec, payload, payload_len);
     }
+#endif
     return 0;
   }
 
@@ -66,7 +68,13 @@ int stream_process_rtp_payload(stream_context_t *ctx, buffer_ref_t *buf_ref) {
 
   /* Process through reorder buffer (also serves as FEC packet store) */
   return rtp_reorder_insert(&ctx->reorder, buf_ref, seqn, ctx->conn,
-                            ctx->snapshot.initialized, ctx->fec.initialized ? &ctx->fec : NULL);
+                            ctx->snapshot.initialized,
+#if R2H_FEATURE_FEC
+                            ctx->fec.initialized ? &ctx->fec : NULL
+#else
+                            NULL
+#endif
+  );
 }
 
 int stream_handle_fd_event(stream_context_t *ctx, int fd, uint32_t events,
@@ -83,6 +91,7 @@ int stream_handle_fd_event(stream_context_t *ctx, int fd, uint32_t events,
 
   /* Process FEC socket events - drain all available packets for
    * edge-triggered pollers (epoll EPOLLET / kqueue EV_CLEAR). */
+#if R2H_FEATURE_FEC
   if (ctx->fec.initialized && ctx->fec.sock >= 0 && fd == ctx->fec.sock) {
     for (;;) {
       uint8_t fec_buf[BUFFER_POOL_BUFFER_SIZE];
@@ -149,6 +158,7 @@ int stream_handle_fd_event(stream_context_t *ctx, int fd, uint32_t events,
     }
     return 0;
   }
+#endif
 #endif
 
   return 0;
@@ -269,11 +279,19 @@ int stream_context_init_for_worker(stream_context_t *ctx, connection_t *conn,
 #endif
 
     /* Initialize RTP reorder and FEC (common to all RTP-based services) */
-    if (rtp_reorder_init(&ctx->reorder, service->fec_port > 0) < 0) {
+    if (rtp_reorder_init(&ctx->reorder,
+#if R2H_FEATURE_FEC
+                         service->fec_port > 0
+#else
+                         0
+#endif
+                         ) < 0) {
       logger(LOG_ERROR, "Failed to initialize RTP reorder buffer");
       return -1;
     }
+#if R2H_FEATURE_FEC
     fec_init(&ctx->fec, service->fec_port, &ctx->reorder);
+#endif
 
     if (service->service_type == SERVICE_RTSP) {
 #if !R2H_FEATURE_RTSP
@@ -434,7 +452,9 @@ int stream_context_cleanup(stream_context_t *ctx) {
 #endif
 
   /* Clean up FEC context (fec_cleanup owns the socket cleanup) */
+#if R2H_FEATURE_FEC
   fec_cleanup(&ctx->fec, ctx->epoll_fd);
+#endif
 
   /* Clean up RTP reorder context */
   rtp_reorder_cleanup(&ctx->reorder);

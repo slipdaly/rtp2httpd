@@ -299,7 +299,7 @@ static int join_mcast_group(service_t *service, int is_fec) {
   memcpy(&bind_addr, service->addr->ai_addr, service->addr->ai_addrlen);
   bind_addr_len = service->addr->ai_addrlen;
 
-  if (is_fec && service->fec_port > 0) {
+  if (R2H_FEATURE_FEC && is_fec && service->fec_port > 0) {
     if (service->addr->ai_family == AF_INET) {
       ((struct sockaddr_in *)&bind_addr)->sin_port = htons(service->fec_port);
     } else if (service->addr->ai_family == AF_INET6) {
@@ -321,7 +321,7 @@ static int join_mcast_group(service_t *service, int is_fec) {
     return -1;
   }
 
-  if (is_fec) {
+  if (R2H_FEATURE_FEC && is_fec) {
     logger(LOG_INFO, "%s: Successfully joined group (port %u)", log_prefix,
            service->fec_port);
   } else {
@@ -516,6 +516,7 @@ int mcast_session_join(mcast_session_t *session, stream_context_t *ctx) {
   session->sock = sock;
 
   /* Join FEC multicast group if configured */
+#if R2H_FEATURE_FEC
   if (ctx->fec.initialized && fec_is_enabled(&ctx->fec)) {
     int fec_sock = join_mcast_group(ctx->service, 1);
     if (fec_sock >= 0) {
@@ -529,6 +530,7 @@ int mcast_session_join(mcast_session_t *session, stream_context_t *ctx) {
       }
     }
   }
+#endif
 
   return 0;
 }
