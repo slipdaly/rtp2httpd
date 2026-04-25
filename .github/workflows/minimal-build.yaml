@@ -442,8 +442,10 @@ jobs:
 
               ./scripts/feeds update -a
               ./scripts/feeds install -a -p luci
-              ./scripts/feeds install -p action -f rtp2httpd-minimal
-              ./scripts/feeds install -p action -f luci-app-rtp2httpd-minimal
+
+              mkdir -p package/feeds/action
+              ln -sfn /feed/rtp2httpd-minimal package/feeds/action/rtp2httpd-minimal
+              ln -sfn /feed/luci-app-rtp2httpd-minimal package/feeds/action/luci-app-rtp2httpd-minimal
 
               printf "%s\n" \
                 "CONFIG_PACKAGE_luci-base=y" \
@@ -453,7 +455,8 @@ jobs:
                 >> .config
 
               make defconfig
-              make package/compile V=sc
+              make package/feeds/action/rtp2httpd-minimal/compile V=sc
+              make package/feeds/action/luci-app-rtp2httpd-minimal/compile V=sc
 
               mkdir -p /artifacts/meta
               cp -a bin /artifacts/
@@ -462,6 +465,9 @@ jobs:
               fi
 
               {
+                echo "== package feed entries =="
+                find package/feeds/action -maxdepth 2 \( -type l -o -type f \) | sort
+                echo
                 echo "== searched files =="
                 find bin build_dir staging_dir -type f 2>/dev/null | sort | sed -n "1,300p"
                 echo
