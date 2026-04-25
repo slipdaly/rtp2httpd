@@ -441,10 +441,12 @@ jobs:
               echo "src-link action /feed" >> feeds.conf
 
               ./scripts/feeds update -a
+              ./scripts/feeds install -a -p luci
               ./scripts/feeds install -p action -f rtp2httpd-minimal
               ./scripts/feeds install -p action -f luci-app-rtp2httpd-minimal
 
               printf "%s\n" \
+                "CONFIG_PACKAGE_luci-base=y" \
                 "CONFIG_PACKAGE_rtp2httpd-minimal=m" \
                 "CONFIG_PACKAGE_luci-app-rtp2httpd-minimal=m" \
                 "CONFIG_PACKAGE_luci-i18n-rtp2httpd-minimal-zh-cn=m" \
@@ -468,6 +470,9 @@ jobs:
                 echo
                 echo "== cmake cache grep =="
                 grep -R -n -E "RTP2HTTPD_MINIMAL_BUILD|RTP2HTTPD_ENABLE_(WEB_UI|STATUS|FCC|FEC|M3U|RTSP|HTTP_PROXY|SNAPSHOT|SIZE_OPTIMIZATIONS)|CMAKE_BUILD_TYPE|ENABLE_AGGRESSIVE_OPT" build_dir 2>/dev/null || true
+                echo
+                echo "== selected package config =="
+                grep -n -E "CONFIG_PACKAGE_(luci-base|rtp2httpd-minimal|luci-app-rtp2httpd-minimal|luci-i18n-rtp2httpd-minimal-zh-cn)" .config 2>/dev/null || true
               } > /artifacts/meta/build-config-report.txt
             '
 
