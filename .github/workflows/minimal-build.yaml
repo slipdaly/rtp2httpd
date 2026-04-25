@@ -164,10 +164,27 @@ jobs:
           path: ${{ steps.prepare.outputs.artifact_dir }}
           if-no-files-found: error
 
+      - name: Ensure release exists
+        if: ${{ inputs.upload_to_release }}
+        run: |
+          if ! gh release view --repo ${{ github.repository }} "${RELEASE_TAG}" >/dev/null 2>&1; then
+            gh release create \
+              --repo ${{ github.repository }} \
+              --target "${GITHUB_SHA}" \
+              --title "${RELEASE_TAG}" \
+              --notes "Automated minimal build artifacts for ${RELEASE_TAG}" \
+              "${RELEASE_TAG}" || true
+          fi
+
+          gh release view --repo ${{ github.repository }} "${RELEASE_TAG}" >/dev/null
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Upload binary to release
         if: ${{ inputs.upload_to_release }}
         run: |
           gh release upload \
+            --clobber \
             --repo ${{ github.repository }} \
             "${RELEASE_TAG}" \
             "${{ steps.prepare.outputs.artifact_dir }}/${{ steps.prepare.outputs.binary_name }}"
@@ -299,10 +316,27 @@ jobs:
           path: ${{ steps.prepare.outputs.artifact_dir }}
           if-no-files-found: error
 
+      - name: Ensure release exists
+        if: ${{ inputs.upload_to_release }}
+        run: |
+          if ! gh release view --repo ${{ github.repository }} "${RELEASE_TAG}" >/dev/null 2>&1; then
+            gh release create \
+              --repo ${{ github.repository }} \
+              --target "${GITHUB_SHA}" \
+              --title "${RELEASE_TAG}" \
+              --notes "Automated minimal build artifacts for ${RELEASE_TAG}" \
+              "${RELEASE_TAG}" || true
+          fi
+
+          gh release view --repo ${{ github.repository }} "${RELEASE_TAG}" >/dev/null
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Upload binary to release
         if: ${{ inputs.upload_to_release }}
         run: |
           gh release upload \
+            --clobber \
             --repo ${{ github.repository }} \
             "${RELEASE_TAG}" \
             "${{ steps.prepare.outputs.artifact_dir }}/${{ steps.prepare.outputs.binary_name }}"
@@ -347,7 +381,9 @@ jobs:
         uses: openwrt/gh-action-sdk@v9
         env:
           ARCH: mipsel_24kc-24.10.4
+          FEED_DIR: ${{ github.workspace }}/openwrt-support
           NO_SHFMT_CHECK: true
+          PACKAGES: rtp2httpd-minimal luci-app-rtp2httpd-minimal
           V: sc
 
       - name: Capture OpenWrt CMake summary
@@ -511,10 +547,27 @@ jobs:
           path: ${{ steps.prepare.outputs.artifact_dir }}
           if-no-files-found: error
 
+      - name: Ensure release exists
+        if: ${{ inputs.upload_to_release }}
+        run: |
+          if ! gh release view --repo ${{ github.repository }} "${RELEASE_TAG}" >/dev/null 2>&1; then
+            gh release create \
+              --repo ${{ github.repository }} \
+              --target "${GITHUB_SHA}" \
+              --title "${RELEASE_TAG}" \
+              --notes "Automated minimal build artifacts for ${RELEASE_TAG}" \
+              "${RELEASE_TAG}" || true
+          fi
+
+          gh release view --repo ${{ github.repository }} "${RELEASE_TAG}" >/dev/null
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Upload package to release
         if: ${{ inputs.upload_to_release }}
         run: |
           gh release upload \
+            --clobber \
             --repo ${{ github.repository }} \
             "${RELEASE_TAG}" \
             "${{ steps.prepare.outputs.artifact_dir }}/${{ steps.prepare.outputs.package_name }}" \
