@@ -374,6 +374,52 @@ jobs:
           echo "artifact_name=rtp2httpd-minimal-openwrt-mipsel_24kc" >> "$GITHUB_OUTPUT"
           echo "package_name=${OUTPUT_NAME}" >> "$GITHUB_OUTPUT"
 
+      - name: Generate package report
+        run: |
+          REPORT_PATH="${{ steps.prepare.outputs.artifact_dir }}/package-report.txt"
+          EXTRACT_DIR="$(mktemp -d)"
+          PACKAGE_PATH="${{ steps.prepare.outputs.artifact_dir }}/${{ steps.prepare.outputs.package_name }}"
+
+          cd "${EXTRACT_DIR}"
+          ar x "${GITHUB_WORKSPACE}/${PACKAGE_PATH}"
+          mkdir data
+          tar -xzf data.tar.gz -C data
+
+          {
+            echo "Architecture: mipsel_24kc (OpenWrt SDK 24.10.4)"
+            echo "Package: ${PACKAGE_PATH}"
+            echo
+            echo "== package ls -lh =="
+            ls -lh "${GITHUB_WORKSPACE}/${PACKAGE_PATH}"
+            echo
+            echo "== package contents =="
+            find data -type f | sort
+            echo
+            if [[ -f "data/usr/bin/rtp2httpd" ]]; then
+              echo "== binary file =="
+              file "data/usr/bin/rtp2httpd"
+              echo
+              echo "== binary ls -lh =="
+              ls -lh "data/usr/bin/rtp2httpd"
+              echo
+              echo "== dynamic section =="
+              readelf -d "data/usr/bin/rtp2httpd" || true
+              echo
+              echo "== section headers =="
+              readelf -S "data/usr/bin/rtp2httpd" || true
+            else
+              echo "Binary data/usr/bin/rtp2httpd not found in package"
+            fi
+          } > "${GITHUB_WORKSPACE}/${REPORT_PATH}"
+
+          {
+            echo "### Minimal OpenWrt Package Report: mt7620"
+            echo
+            echo '```text'
+            sed -n '1,160p' "${GITHUB_WORKSPACE}/${REPORT_PATH}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
