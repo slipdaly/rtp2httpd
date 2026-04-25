@@ -377,59 +377,84 @@ jobs:
           echo "RELEASE_VERSION=${BUILD_VERSION}" >> "$GITHUB_ENV"
           echo "RELEASE_TAG=${RELEASE_TAG}" >> "$GITHUB_ENV"
 
-      - name: Build minimal OpenWrt package
-        uses: openwrt/gh-action-sdk@v9
-        env:
-          ARCH: mipsel_24kc-24.10.4
-          FEED_DIR: ${{ github.workspace }}/openwrt-support
-          NO_SHFMT_CHECK: true
-          PACKAGES: rtp2httpd-minimal luci-app-rtp2httpd-minimal
-          V: sc
-
-      - name: Capture OpenWrt CMake summary
+      - name: Build minimal OpenWrt packages in SDK container
         run: |
-          REPORT_PATH="artifacts/openwrt-mipsel_24kc-mt7620/build-config-report.txt"
-          mkdir -p "$(dirname "${REPORT_PATH}")"
+          SDK_OUT="${GITHUB_WORKSPACE}/openwrt-sdk-out"
+          rm -rf "${SDK_OUT}"
+          mkdir -p "${SDK_OUT}"
 
-          {
-            echo "== searched files =="
-            find bin/targets bin/packages build_dir -type f 2>/dev/null | sort | sed -n '1,200p'
-            echo
-            echo "== cmake summary grep =="
-            grep -R -n -E "rtp2httpd build configuration:|Minimal build:|Size opt:|Web UI:|Status:|FCC:|FEC:|M3U/EPG:|RTSP:|HTTP proxy:|Snapshot:" build_dir bin/targets bin/packages 2>/dev/null || true
-            echo
-            echo "== cmake cache grep =="
-            grep -R -n -E "RTP2HTTPD_MINIMAL_BUILD|RTP2HTTPD_ENABLE_(WEB_UI|STATUS|FCC|FEC|M3U|RTSP|HTTP_PROXY|SNAPSHOT|SIZE_OPTIMIZATIONS)|CMAKE_BUILD_TYPE|ENABLE_AGGRESSIVE_OPT" build_dir 2>/dev/null || true
-          } > "${REPORT_PATH}"
+          docker pull ghcr.io/openwrt/sdk:mipsel_24kc-24.10.4
+
+          docker run --rm \
+            -v "${GITHUB_WORKSPACE}/openwrt-support:/feed" \
+            -v "${SDK_OUT}:/artifacts" \
+            ghcr.io/openwrt/sdk:mipsel_24kc-24.10.4 \
+            /bin/bash -lc '
+              set -euo pipefail
+
+              cp feeds.conf.default feeds.conf
+              echo "src-link action /feed" >> feeds.conf
+
+              ./scripts/feeds update -a
+              ./scripts/feeds install -p action -f rtp2httpd-minimal
+              ./scripts/feeds install -p action -f luci-app-rtp2httpd-minimal
+
+              printf "%s\n" \
+                "CONFIG_PACKAGE_rtp2httpd-minimal=m" \
+                "CONFIG_PACKAGE_luci-app-rtp2httpd-minimal=m" \
+                "CONFIG_PACKAGE_luci-i18n-rtp2httpd-minimal-zh-cn=m" \
+                >> .config
+
+              make defconfig
+              make package/feeds/action/rtp2httpd-minimal/compile V=sc
+              make package/feeds/action/luci-app-rtp2httpd-minimal/compile V=sc
+
+              mkdir -p /artifacts/meta
+              cp -a bin /artifacts/
+              if [ -d logs ]; then
+                cp -a logs /artifacts/
+              fi
+
+              {
+                echo "== searched files =="
+                find bin build_dir staging_dir -type f 2>/dev/null | sort | sed -n "1,300p"
+                echo
+                echo "== cmake summary grep =="
+                grep -R -n -E "rtp2httpd build configuration:|Minimal build:|Size opt:|Web UI:|Status:|FCC:|FEC:|M3U/EPG:|RTSP:|HTTP proxy:|Snapshot:" build_dir 2>/dev/null || true
+                echo
+                echo "== cmake cache grep =="
+                grep -R -n -E "RTP2HTTPD_MINIMAL_BUILD|RTP2HTTPD_ENABLE_(WEB_UI|STATUS|FCC|FEC|M3U|RTSP|HTTP_PROXY|SNAPSHOT|SIZE_OPTIMIZATIONS)|CMAKE_BUILD_TYPE|ENABLE_AGGRESSIVE_OPT" build_dir 2>/dev/null || true
+              } > /artifacts/meta/build-config-report.txt
+            '
 
           {
             echo "### OpenWrt Build Config Report: mt7620"
             echo
             echo '```text'
-            sed -n '1,200p' "${REPORT_PATH}"
+            sed -n '1,200p' "${SDK_OUT}/meta/build-config-report.txt"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Prepare artifact
         id: prepare
         run: |
-          PKG_PATH="$(find bin/packages/mipsel_24kc/action -maxdepth 1 -name 'rtp2httpd-minimal_*.ipk' | head -n 1)"
-          LUCI_PATH="$(find bin/packages -type f -name 'luci-app-rtp2httpd-minimal*.ipk' | head -n 1)"
-          I18N_PATH="$(find bin/packages -type f -name 'luci-i18n-rtp2httpd-minimal-zh*ipk' | head -n 1)"
+          PKG_PATH="$(find openwrt-sdk-out/bin/packages/mipsel_24kc/action -maxdepth 1 -name 'rtp2httpd-minimal_*.ipk' | head -n 1)"
+          LUCI_PATH="$(find openwrt-sdk-out/bin/packages -type f -name 'luci-app-rtp2httpd-minimal*.ipk' | head -n 1)"
+          I18N_PATH="$(find openwrt-sdk-out/bin/packages -type f -name 'luci-i18n-rtp2httpd-minimal-zh*ipk' | head -n 1)"
 
           if [[ -z "${PKG_PATH}" ]]; then
             echo "Error: OpenWrt package not found"
-            find bin -maxdepth 4 -type f | sort
+            find openwrt-sdk-out -maxdepth 6 -type f | sort
             exit 1
           fi
           if [[ -z "${LUCI_PATH}" ]]; then
             echo "Error: minimal LuCI package not found"
-            find bin -maxdepth 6 -type f | sort
+            find openwrt-sdk-out -maxdepth 6 -type f | sort
             exit 1
           fi
           if [[ -z "${I18N_PATH}" ]]; then
             echo "Error: minimal LuCI i18n package not found"
-            find bin -maxdepth 6 -type f | sort
+            find openwrt-sdk-out -maxdepth 6 -type f | sort
             exit 1
           fi
 
@@ -442,6 +467,7 @@ jobs:
           cp "${PKG_PATH}" "${OUTPUT_DIR}/${OUTPUT_NAME}"
           cp "${LUCI_PATH}" "${OUTPUT_DIR}/${LUCI_NAME}"
           cp "${I18N_PATH}" "${OUTPUT_DIR}/${I18N_NAME}"
+          cp "openwrt-sdk-out/meta/build-config-report.txt" "${OUTPUT_DIR}/build-config-report.txt"
           ls -lh "${OUTPUT_DIR}/${OUTPUT_NAME}"
           ls -lh "${OUTPUT_DIR}/${LUCI_NAME}"
           ls -lh "${OUTPUT_DIR}/${I18N_NAME}"
