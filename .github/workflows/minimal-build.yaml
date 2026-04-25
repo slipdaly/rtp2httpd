@@ -381,9 +381,20 @@ jobs:
           PACKAGE_PATH="${{ steps.prepare.outputs.artifact_dir }}/${{ steps.prepare.outputs.package_name }}"
 
           cd "${EXTRACT_DIR}"
-          ar x "${GITHUB_WORKSPACE}/${PACKAGE_PATH}"
           mkdir data
-          tar -xzf data.tar.gz -C data
+
+          if ar t "${GITHUB_WORKSPACE}/${PACKAGE_PATH}" >/dev/null 2>&1; then
+            ar x "${GITHUB_WORKSPACE}/${PACKAGE_PATH}"
+            DATA_ARCHIVE="$(find . -maxdepth 1 -type f \\( -name 'data.tar.gz' -o -name 'data.tar.xz' -o -name 'data.tar.zst' -o -name 'data.tar.bz2' -o -name 'data.tar' \\) | head -n 1)"
+            if [[ -z "${DATA_ARCHIVE}" ]]; then
+              echo "Error: data archive not found inside package"
+              find . -maxdepth 1 -type f | sort
+              exit 1
+            fi
+            tar -xf "${DATA_ARCHIVE}" -C data
+          else
+            tar -xf "${GITHUB_WORKSPACE}/${PACKAGE_PATH}" -C data
+          fi
 
           {
             echo "Architecture: mipsel_24kc (OpenWrt SDK 24.10.4)"
@@ -391,6 +402,9 @@ jobs:
             echo
             echo "== package ls -lh =="
             ls -lh "${GITHUB_WORKSPACE}/${PACKAGE_PATH}"
+            echo
+            echo "== package file =="
+            file "${GITHUB_WORKSPACE}/${PACKAGE_PATH}"
             echo
             echo "== package contents =="
             find data -type f | sort
