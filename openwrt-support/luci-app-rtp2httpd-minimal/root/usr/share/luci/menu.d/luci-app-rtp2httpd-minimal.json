@@ -1,5 +1,5 @@
 {
-  "admin/services/rtp2httpd-minimal": {
+  "admin/services/rtp2httpd": {
     "title": "rtp2httpd",
     "action": {
       "type": "view",
