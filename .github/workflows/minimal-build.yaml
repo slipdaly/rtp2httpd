@@ -429,10 +429,12 @@ jobs:
 
           docker run --rm \
             -v "${GITHUB_WORKSPACE}/openwrt-support:/feed" \
+            -v "${GITHUB_WORKSPACE}:/src" \
             -v "${SDK_OUT}:/artifacts" \
             ghcr.io/openwrt/sdk:mipsel_24kc-24.10.4 \
             /bin/bash -lc '
               set -euo pipefail
+              export RTP2HTTPD_SOURCE_DIR=/src
 
               cp feeds.conf.default feeds.conf
               echo "src-link action /feed" >> feeds.conf

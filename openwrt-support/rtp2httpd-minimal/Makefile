@@ -1,10 +1,11 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=rtp2httpd-minimal
+RTP2HTTPD_SOURCE_DIR:=$(if $(RTP2HTTPD_SOURCE_DIR),$(RTP2HTTPD_SOURCE_DIR),$(CURDIR)/../..)
 
 # Extract version from git tags only if current commit is tagged and clean
 RELEASE_VERSION:=$(if $(DUMP),unknown,$(shell \
-	cd $(CURDIR)/../.. 2>/dev/null && \
+	cd $(RTP2HTTPD_SOURCE_DIR) 2>/dev/null && \
 	if git describe --tags --exact-match --match 'v*' 2>/dev/null >/dev/null && \
 	   git diff --quiet 2>/dev/null && \
 	   git diff --cached --quiet 2>/dev/null; then \
@@ -28,12 +29,12 @@ include $(INCLUDE_DIR)/cmake.mk
 
 define Build/Prepare
 	mkdir -p $(PKG_BUILD_DIR)
-	$(CP) $(CURDIR)/../../CMakeLists.txt $(PKG_BUILD_DIR)/
-	$(CP) $(CURDIR)/../../src $(PKG_BUILD_DIR)/
-	$(CP) $(CURDIR)/../../scripts $(PKG_BUILD_DIR)/
-	$(CP) $(CURDIR)/../../rtp2httpd.conf $(PKG_BUILD_DIR)/
-	$(CP) $(CURDIR)/../../LICENSE $(PKG_BUILD_DIR)/ 2>/dev/null || true
-	$(CP) $(CURDIR)/../../README.md $(PKG_BUILD_DIR)/ 2>/dev/null || true
+	$(CP) $(RTP2HTTPD_SOURCE_DIR)/CMakeLists.txt $(PKG_BUILD_DIR)/
+	$(CP) $(RTP2HTTPD_SOURCE_DIR)/src $(PKG_BUILD_DIR)/
+	$(CP) $(RTP2HTTPD_SOURCE_DIR)/scripts $(PKG_BUILD_DIR)/
+	$(CP) $(RTP2HTTPD_SOURCE_DIR)/rtp2httpd.conf $(PKG_BUILD_DIR)/
+	$(CP) $(RTP2HTTPD_SOURCE_DIR)/LICENSE $(PKG_BUILD_DIR)/ 2>/dev/null || true
+	$(CP) $(RTP2HTTPD_SOURCE_DIR)/README.md $(PKG_BUILD_DIR)/ 2>/dev/null || true
 endef
 
 define Package/rtp2httpd-minimal
