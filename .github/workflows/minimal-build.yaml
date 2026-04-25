@@ -385,7 +385,13 @@ jobs:
 
           if ar t "${GITHUB_WORKSPACE}/${PACKAGE_PATH}" >/dev/null 2>&1; then
             ar x "${GITHUB_WORKSPACE}/${PACKAGE_PATH}"
-            DATA_ARCHIVE="$(find . -maxdepth 1 -type f \\( -name 'data.tar.gz' -o -name 'data.tar.xz' -o -name 'data.tar.zst' -o -name 'data.tar.bz2' -o -name 'data.tar' \\) | head -n 1)"
+            DATA_ARCHIVE=""
+            for candidate in data.tar.gz data.tar.xz data.tar.zst data.tar.bz2 data.tar; do
+              if [[ -f "${candidate}" ]]; then
+                DATA_ARCHIVE="${candidate}"
+                break
+              fi
+            done
             if [[ -z "${DATA_ARCHIVE}" ]]; then
               echo "Error: data archive not found inside package"
               find . -maxdepth 1 -type f | sort
