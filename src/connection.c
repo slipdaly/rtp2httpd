@@ -910,7 +910,6 @@ int connection_route_and_start(connection_t *c) {
     return 0;
   }
 #endif
-#endif
 
   /* Find configured service (with URL decoding support) */
   service_t *service = NULL;
@@ -1038,8 +1037,8 @@ int connection_route_and_start(connection_t *c) {
 
   /* Register streaming client in status tracking with service URL (skip for
    * snapshots) */
-  if (c->client_addr_len > 0) {
 #if R2H_FEATURE_STATUS
+  if (c->client_addr_len > 0) {
     /* Build display URL with decoded service name and query parameters */
     char display_url[HTTP_URL_BUFFER_SIZE];
     size_t url_len = 0;
@@ -1087,12 +1086,12 @@ int connection_route_and_start(connection_t *c) {
       logger(LOG_ERROR,
              "Failed to register streaming client in status tracking");
     }
-#else
-    c->status_index = -1;
-#endif
   } else {
     c->status_index = -1;
   }
+#else
+  c->status_index = -1;
+#endif
 
   /* Headers will be sent lazily when first data is ready (or 503 on timeout) */
   /* Snapshots send JPEG headers after conversion */

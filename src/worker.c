@@ -321,6 +321,9 @@ int worker_run_event_loop(int *listen_sockets, int num_sockets, int notif_fd) {
 #if !R2H_FEATURE_WEB_UI
         (void)has_sse_update;
 #endif
+#if !R2H_FEATURE_STATUS
+        (void)has_disconnect_request;
+#endif
 
         /* Handle SSE updates */
 #if R2H_FEATURE_WEB_UI
