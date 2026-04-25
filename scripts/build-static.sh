@@ -45,6 +45,18 @@ SYSROOT="${TOOLCHAIN_DIR}/${TOOLCHAIN_PREFIX}/sysroot"
 # Build configuration
 BUILD_DIR="build-${TOOLCHAIN_PREFIX}-static"
 CMAKE_EXTRA_ARGS="${CMAKE_EXTRA_ARGS:-}"
+EXTRA_CFLAGS="${EXTRA_CFLAGS:-}"
+EXTRA_LDFLAGS="${EXTRA_LDFLAGS:-}"
+CMAKE_C_FLAGS_VALUE="-static --sysroot=${SYSROOT}"
+CMAKE_EXE_LINKER_FLAGS_VALUE="-static --sysroot=${SYSROOT}"
+
+if [ -n "$EXTRA_CFLAGS" ]; then
+    CMAKE_C_FLAGS_VALUE="${CMAKE_C_FLAGS_VALUE} ${EXTRA_CFLAGS}"
+fi
+
+if [ -n "$EXTRA_LDFLAGS" ]; then
+    CMAKE_EXE_LINKER_FLAGS_VALUE="${CMAKE_EXE_LINKER_FLAGS_VALUE} ${EXTRA_LDFLAGS}"
+fi
 
 echo_step "Toolchain Configuration"
 echo_info "Release: ${TOOLCHAIN_RELEASE}"
@@ -124,12 +136,18 @@ cd "$BUILD_DIR"
 echo ""
 echo_step "Configuring Build"
 echo_info "Build directory: $(pwd)"
-echo_info "Build type: Release (with aggressive optimizations)"
+echo_info "Build type: Release (defaults may be overridden by extra args)"
 if [ -n "$RELEASE_VERSION" ]; then
     echo_info "Version: $RELEASE_VERSION"
 fi
 if [ -n "$CMAKE_EXTRA_ARGS" ]; then
     echo_info "Extra CMake args: $CMAKE_EXTRA_ARGS"
+fi
+if [ -n "$EXTRA_CFLAGS" ]; then
+    echo_info "Extra C flags: $EXTRA_CFLAGS"
+fi
+if [ -n "$EXTRA_LDFLAGS" ]; then
+    echo_info "Extra linker flags: $EXTRA_LDFLAGS"
 fi
 
 # Configure with CMake for static linking
@@ -142,8 +160,8 @@ RELEASE_VERSION="${RELEASE_VERSION}" cmake "${PROJECT_ROOT}" \
     -DCMAKE_AR="${TOOLCHAIN_DIR}/bin/${TOOLCHAIN_PREFIX}-ar" \
     -DCMAKE_RANLIB="${TOOLCHAIN_DIR}/bin/${TOOLCHAIN_PREFIX}-ranlib" \
     -DCMAKE_STRIP="${TOOLCHAIN_DIR}/bin/${TOOLCHAIN_PREFIX}-strip" \
-    -DCMAKE_C_FLAGS="-static --sysroot=${SYSROOT}" \
-    -DCMAKE_EXE_LINKER_FLAGS="-static --sysroot=${SYSROOT}" \
+    -DCMAKE_C_FLAGS="${CMAKE_C_FLAGS_VALUE}" \
+    -DCMAKE_EXE_LINKER_FLAGS="${CMAKE_EXE_LINKER_FLAGS_VALUE}" \
     -DCMAKE_INSTALL_PREFIX=/usr \
     -DCMAKE_INSTALL_SYSCONFDIR=/etc \
     -DCMAKE_BUILD_TYPE=Release \

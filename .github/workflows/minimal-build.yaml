@@ -121,6 +121,177 @@ jobs:
           echo "artifact_name=rtp2httpd-minimal-${ARCH_SHORT}" >> "$GITHUB_OUTPUT"
           echo "binary_name=${OUTPUT_NAME}" >> "$GITHUB_OUTPUT"
 
+      - name: Generate size report
+        run: |
+          ARCH="${{ matrix.arch }}"
+          TOOL_PREFIX="toolchain/${ARCH}/bin/${ARCH}"
+          BINARY_UNSTRIPPED="build-${ARCH}-static/rtp2httpd"
+          BINARY_STRIPPED="${{ steps.prepare.outputs.artifact_dir }}/${{ steps.prepare.outputs.binary_name }}"
+          REPORT_PATH="${{ steps.prepare.outputs.artifact_dir }}/size-report.txt"
+
+          {
+            echo "Architecture: ${ARCH}"
+            echo "Binary: ${BINARY_STRIPPED}"
+            echo
+            echo "== file =="
+            file "${BINARY_STRIPPED}"
+            echo
+            echo "== ls -lh =="
+            ls -lh "${BINARY_STRIPPED}"
+            echo
+            echo "== size (unstripped) =="
+            "${TOOL_PREFIX}-size" "${BINARY_UNSTRIPPED}"
+            echo
+            echo "== sections (stripped) =="
+            "${TOOL_PREFIX}-readelf" -S "${BINARY_STRIPPED}"
+            echo
+            echo "== largest symbols (unstripped, top 80) =="
+            "${TOOL_PREFIX}-nm" -S --size-sort "${BINARY_UNSTRIPPED}" | tail -n 80
+          } > "${REPORT_PATH}"
+
+          {
+            echo "### Minimal Build Size Report: ${ARCH}"
+            echo
+            echo '```text'
+            sed -n '1,120p' "${REPORT_PATH}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.prepare.outputs.artifact_name }}
+          path: ${{ steps.prepare.outputs.artifact_dir }}
+          if-no-files-found: error
+
+      - name: Upload binary to release
+        if: ${{ inputs.upload_to_release }}
+        run: |
+          gh release upload \
+            --repo ${{ github.repository }} \
+            "${RELEASE_TAG}" \
+            "${{ steps.prepare.outputs.artifact_dir }}/${{ steps.prepare.outputs.binary_name }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  linux-static-minimal-mt7620:
+    name: Minimal Binary mt7620-24kc
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            build-essential \
+            wget \
+            xz-utils \
+            file
+
+      - name: Set version environment variable
+        run: |
+          if [[ "${{ inputs.upload_to_release }}" == "true" && -z "${{ inputs.release_tag }}" ]]; then
+            echo "release_tag is required when upload_to_release is true"
+            exit 1
+          fi
+
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            BUILD_VERSION="${GITHUB_REF_NAME#v}"
+          else
+            BUILD_VERSION="minimal-${GITHUB_SHA::7}"
+          fi
+
+          if [[ -n "${{ inputs.release_tag }}" ]]; then
+            RELEASE_TAG="${{ inputs.release_tag }}"
+          elif [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            RELEASE_TAG="${GITHUB_REF_NAME}"
+          else
+            RELEASE_TAG=""
+          fi
+
+          echo "BUILD_VERSION=${BUILD_VERSION}" >> "$GITHUB_ENV"
+          echo "RELEASE_VERSION=${BUILD_VERSION}" >> "$GITHUB_ENV"
+          echo "RELEASE_TAG=${RELEASE_TAG}" >> "$GITHUB_ENV"
+
+      - name: Build mt7620-optimized minimal static binary
+        env:
+          TOOLCHAIN_PREFIX: mipsel-unknown-linux-musl
+          EXTRA_CFLAGS: -march=24kc -mtune=24kc
+          EXTRA_LDFLAGS: -march=24kc -mtune=24kc
+          CMAKE_EXTRA_ARGS: >-
+            -DCMAKE_BUILD_TYPE=MinSizeRel
+            -DENABLE_AGGRESSIVE_OPT=OFF
+            -DRTP2HTTPD_MINIMAL_BUILD=ON
+            -DRTP2HTTPD_ENABLE_SIZE_OPTIMIZATIONS=ON
+        run: ./scripts/build-static.sh
+
+      - name: Prepare artifact
+        id: prepare
+        run: |
+          ARCH="mipsel-unknown-linux-musl"
+          ARCH_SHORT="mipsel-mt7620-24kc"
+          BINARY_PATH="build-${ARCH}-static/dist/usr/bin/rtp2httpd"
+
+          if [ ! -f "$BINARY_PATH" ]; then
+            echo "Error: Binary not found at $BINARY_PATH"
+            exit 1
+          fi
+
+          OUTPUT_DIR="artifacts/${ARCH_SHORT}"
+          OUTPUT_NAME="rtp2httpd-minimal-${BUILD_VERSION}-${ARCH_SHORT}"
+
+          mkdir -p "$OUTPUT_DIR"
+          cp "$BINARY_PATH" "${OUTPUT_DIR}/${OUTPUT_NAME}"
+          cp rtp2httpd.conf "${OUTPUT_DIR}/rtp2httpd.conf"
+
+          file "${OUTPUT_DIR}/${OUTPUT_NAME}"
+          ls -lh "${OUTPUT_DIR}/${OUTPUT_NAME}"
+
+          echo "artifact_dir=${OUTPUT_DIR}" >> "$GITHUB_OUTPUT"
+          echo "artifact_name=rtp2httpd-minimal-${ARCH_SHORT}" >> "$GITHUB_OUTPUT"
+          echo "binary_name=${OUTPUT_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate size report
+        run: |
+          ARCH="mipsel-unknown-linux-musl"
+          TOOL_PREFIX="toolchain/${ARCH}/bin/${ARCH}"
+          BINARY_UNSTRIPPED="build-${ARCH}-static/rtp2httpd"
+          BINARY_STRIPPED="${{ steps.prepare.outputs.artifact_dir }}/${{ steps.prepare.outputs.binary_name }}"
+          REPORT_PATH="${{ steps.prepare.outputs.artifact_dir }}/size-report.txt"
+
+          {
+            echo "Architecture: ${ARCH} (mt7620 / 24kc tuned)"
+            echo "Binary: ${BINARY_STRIPPED}"
+            echo
+            echo "== file =="
+            file "${BINARY_STRIPPED}"
+            echo
+            echo "== ls -lh =="
+            ls -lh "${BINARY_STRIPPED}"
+            echo
+            echo "== size (unstripped) =="
+            "${TOOL_PREFIX}-size" "${BINARY_UNSTRIPPED}"
+            echo
+            echo "== sections (stripped) =="
+            "${TOOL_PREFIX}-readelf" -S "${BINARY_STRIPPED}"
+            echo
+            echo "== largest symbols (unstripped, top 80) =="
+            "${TOOL_PREFIX}-nm" -S --size-sort "${BINARY_UNSTRIPPED}" | tail -n 80
+          } > "${REPORT_PATH}"
+
+          {
+            echo "### Minimal Build Size Report: mt7620-24kc"
+            echo
+            echo '```text'
+            sed -n '1,120p' "${REPORT_PATH}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
