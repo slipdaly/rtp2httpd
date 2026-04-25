@@ -49,8 +49,16 @@ define Package/rtp2httpd/description
 	incoming RTP data to HTTP stream.
 endef
 
+ifeq ($(strip $(RTP2HTTPD_MINIMAL_BUILD)),1)
+CMAKE_OPTIONS += \
+	-DCMAKE_BUILD_TYPE=MinSizeRel \
+	-DENABLE_AGGRESSIVE_OPT=OFF \
+	-DRTP2HTTPD_MINIMAL_BUILD=ON \
+	-DRTP2HTTPD_ENABLE_SIZE_OPTIMIZATIONS=ON
+else
 CMAKE_OPTIONS += \
 	-DENABLE_AGGRESSIVE_OPT=ON
+endif
 
 define Package/rtp2httpd/conffiles
 /etc/config/rtp2httpd
