@@ -161,8 +161,10 @@ static int parse_rtp_url_components(char *url_part,
                                     struct rtp_url_components *components) {
   char *query_start, *at_pos;
   char main_part[HTTP_URL_MAIN_PART_SIZE];
+#if R2H_FEATURE_FCC
   char fcc_value[HTTP_URL_FCC_VALUE_SIZE];
   char fcc_type_value[32];
+#endif
 
   /* Initialize components */
   memset(components, 0, sizeof(*components));
@@ -180,6 +182,7 @@ static int parse_rtp_url_components(char *url_part,
     *query_start = '\0'; /* Terminate main part */
     query_start++;       /* Point to query string */
 
+#if R2H_FEATURE_FCC
     /* Parse FCC parameter from query string */
     if (http_parse_query_param(query_start, "fcc", fcc_value,
                                sizeof(fcc_value)) == 0) {
@@ -211,6 +214,7 @@ static int parse_rtp_url_components(char *url_part,
         /* Unrecognized values are ignored (use port-based detection) */
       }
     }
+#endif
 
 #if R2H_FEATURE_FEC
     /* Parse FEC port parameter from query string */
@@ -1354,7 +1358,7 @@ service_t *service_create_from_rtp_url(const char *http_url) {
     logger(LOG_DEBUG, " src=%s:%s", components.source_addr,
            components.source_port);
   }
-  if (components.has_fcc) {
+  if (R2H_FEATURE_FCC && components.has_fcc) {
     logger(LOG_DEBUG, " fcc=%s:%s", components.fcc_addr, components.fcc_port);
   }
   if (R2H_FEATURE_FEC && components.fec_port > 0) {
@@ -1533,7 +1537,7 @@ service_t *service_create_from_rtp_url(const char *http_url) {
   result->fcc_addr = NULL;
   result->fcc_type = components.fcc_type;
   result->fec_port = R2H_FEATURE_FEC ? components.fec_port : 0;
-  if (components.has_fcc) {
+  if (R2H_FEATURE_FCC && components.has_fcc) {
 #if R2H_FEATURE_MINIMAL_BUILD
     result->fcc_addr = create_numeric_addrinfo(
         components.fcc_addr, components.fcc_port[0] ? components.fcc_port : NULL,

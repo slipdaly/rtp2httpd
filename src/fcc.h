@@ -1,6 +1,8 @@
 #ifndef __FCC_H__
 #define __FCC_H__
 
+#if R2H_FEATURE_FCC
+
 #include "buffer_pool.h"
 #include "service.h"
 #include <netinet/in.h>
@@ -209,5 +211,131 @@ int fcc_handle_mcast_active(stream_context_t *ctx, buffer_ref_t *buf_ref);
  */
 ssize_t sendto_triple(int fd, const void *buf, size_t n, int flags,
                       struct sockaddr_in *addr, socklen_t addr_len);
+
+#else
+
+#include "buffer_pool.h"
+#include "service.h"
+#include <netinet/in.h>
+#include <stdbool.h>
+#include <stdint.h>
+
+typedef struct stream_context_s stream_context_t;
+
+typedef enum {
+  FCC_TYPE_TELECOM = 0,
+  FCC_TYPE_HUAWEI = 1
+} fcc_type_t;
+
+typedef enum {
+  FCC_STATE_INIT = 0,
+  FCC_STATE_REQUESTED,
+  FCC_STATE_UNICAST_PENDING,
+  FCC_STATE_UNICAST_ACTIVE,
+  FCC_STATE_MCAST_REQUESTED,
+  FCC_STATE_MCAST_ACTIVE,
+  FCC_STATE_ERROR
+} fcc_state_t;
+
+typedef struct {
+  int initialized;
+  fcc_state_t state;
+  fcc_type_t type;
+  int status_index;
+  int fcc_sock;
+} fcc_session_t;
+
+static inline void fcc_session_init(fcc_session_t *fcc) {
+  if (!fcc)
+    return;
+  fcc->initialized = 0;
+  fcc->state = FCC_STATE_INIT;
+  fcc->type = FCC_TYPE_TELECOM;
+  fcc->status_index = -1;
+  fcc->fcc_sock = -1;
+}
+
+static inline void fcc_session_cleanup(fcc_session_t *fcc, service_t *service,
+                                       int epoll_fd) {
+  (void)fcc;
+  (void)service;
+  (void)epoll_fd;
+}
+
+static inline int fcc_session_tick(stream_context_t *ctx, int64_t now) {
+  (void)ctx;
+  (void)now;
+  return 0;
+}
+
+static inline int fcc_handle_socket_event(stream_context_t *ctx, int64_t now) {
+  (void)ctx;
+  (void)now;
+  return 0;
+}
+
+static inline int fcc_session_set_state(fcc_session_t *fcc,
+                                        fcc_state_t new_state,
+                                        const char *reason) {
+  (void)fcc;
+  (void)new_state;
+  (void)reason;
+  return 0;
+}
+
+static inline int fcc_initialize_and_request(stream_context_t *ctx) {
+  (void)ctx;
+  return -1;
+}
+
+static inline int fcc_handle_server_response(stream_context_t *ctx, uint8_t *buf,
+                                             int buf_len) {
+  (void)ctx;
+  (void)buf;
+  (void)buf_len;
+  return -1;
+}
+
+static inline int fcc_handle_sync_notification(stream_context_t *ctx,
+                                               int timeout_ms) {
+  (void)ctx;
+  (void)timeout_ms;
+  return -1;
+}
+
+static inline int fcc_handle_unicast_media(stream_context_t *ctx,
+                                           buffer_ref_t *buf_ref) {
+  (void)ctx;
+  (void)buf_ref;
+  return -1;
+}
+
+static inline int fcc_handle_mcast_transition(stream_context_t *ctx,
+                                              buffer_ref_t *buf_ref) {
+  (void)ctx;
+  (void)buf_ref;
+  return -1;
+}
+
+static inline int fcc_handle_mcast_active(stream_context_t *ctx,
+                                          buffer_ref_t *buf_ref) {
+  (void)ctx;
+  (void)buf_ref;
+  return -1;
+}
+
+static inline ssize_t sendto_triple(int fd, const void *buf, size_t n, int flags,
+                                    struct sockaddr_in *addr,
+                                    socklen_t addr_len) {
+  (void)fd;
+  (void)buf;
+  (void)n;
+  (void)flags;
+  (void)addr;
+  (void)addr_len;
+  return -1;
+}
+
+#endif
 
 #endif /* __FCC_H__ */

@@ -80,9 +80,11 @@ int stream_process_rtp_payload(stream_context_t *ctx, buffer_ref_t *buf_ref) {
 int stream_handle_fd_event(stream_context_t *ctx, int fd, uint32_t events,
                            int64_t now) {
   /* Process FCC socket events */
+#if R2H_FEATURE_FCC
   if (ctx->fcc.initialized && ctx->fcc.fcc_sock >= 0 && fd == ctx->fcc.fcc_sock) {
     return fcc_handle_socket_event(ctx, now);
   }
+#endif
 
   /* Process multicast socket events */
   if (ctx->mcast.initialized && ctx->mcast.sock >= 0 && fd == ctx->mcast.sock) {
@@ -102,6 +104,7 @@ int stream_handle_fd_event(stream_context_t *ctx, int fd, uint32_t events,
     }
     return 0;
   }
+#endif
 
   /* Process RTSP socket events */
 #if R2H_FEATURE_RTSP
@@ -158,7 +161,6 @@ int stream_handle_fd_event(stream_context_t *ctx, int fd, uint32_t events,
     }
     return 0;
   }
-#endif
 #endif
 
   return 0;
@@ -330,9 +332,10 @@ int stream_context_init_for_worker(stream_context_t *ctx, connection_t *conn,
              ctx->rtsp.state);
 #endif
     } else {
-      /* Multicast-based services (FCC or direct multicast) */
+      /* Multicast-based services */
       mcast_session_init(&ctx->mcast);
 
+#if R2H_FEATURE_FCC
       if (service->fcc_addr) {
         /* use Fast Channel Change for quick stream startup */
         fcc_session_init(&ctx->fcc);
@@ -357,6 +360,14 @@ int stream_context_init_for_worker(stream_context_t *ctx, connection_t *conn,
         /* Update client state for direct multicast (no FCC) */
         status_update_client_state(status_index, CLIENT_STATE_FCC_MCAST_ACTIVE);
       }
+#else
+      /* Direct multicast join */
+      if (mcast_session_join(&ctx->mcast, ctx) < 0) {
+        logger(LOG_ERROR, "Multicast: Failed to join group");
+        return -1;
+      }
+      status_update_client_state(status_index, CLIENT_STATE_FCC_MCAST_ACTIVE);
+#endif
     }
   }
 
@@ -373,7 +384,9 @@ int stream_tick(stream_context_t *ctx, int64_t now) {
   }
 
   /* FCC session tick (timeout checks) */
+#if R2H_FEATURE_FCC
   fcc_session_tick(ctx, now);
+#endif
 
   /* RTSP session tick (STUN timeout, keepalive, state timeout) */
 #if R2H_FEATURE_RTSP
@@ -436,7 +449,9 @@ int stream_context_cleanup(stream_context_t *ctx) {
 #endif
 
   /* Clean up FCC session (always safe to cleanup immediately) */
+#if R2H_FEATURE_FCC
   fcc_session_cleanup(&ctx->fcc, ctx->service, ctx->epoll_fd);
+#endif
 
   /* Clean up multicast session */
   mcast_session_cleanup(&ctx->mcast, ctx->epoll_fd);

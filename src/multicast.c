@@ -572,15 +572,17 @@ int mcast_session_handle_event(mcast_session_t *session, stream_context_t *ctx,
 
     int result = 0;
 
-    /* Handle based on FCC state (if FCC initialized) */
+    /* Handle based on FCC state when enabled, otherwise forward directly. */
+#if R2H_FEATURE_FCC
     if (!ctx->fcc.initialized) {
-      /* Direct multicast without FCC - forward to client */
+#endif
       int processed_bytes = stream_process_rtp_payload(ctx, recv_buf);
       if (processed_bytes > 0) {
         ctx->total_bytes_sent += (uint64_t)processed_bytes;
       }
       buffer_ref_put(recv_buf);
       continue; /* Read next packet */
+#if R2H_FEATURE_FCC
     }
 
     switch (ctx->fcc.state) {
@@ -597,6 +599,7 @@ int mcast_session_handle_event(mcast_session_t *session, stream_context_t *ctx,
              ctx->fcc.state);
       break;
     }
+#endif
 
     buffer_ref_put(recv_buf);
 
