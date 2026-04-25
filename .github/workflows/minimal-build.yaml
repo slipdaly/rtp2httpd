@@ -54,12 +54,6 @@ jobs:
             exit 1
           fi
 
-          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            BUILD_VERSION="${GITHUB_REF_NAME#v}"
-          else
-            BUILD_VERSION="minimal-${GITHUB_SHA::7}"
-          fi
-
           if [[ -n "${{ inputs.release_tag }}" ]]; then
             RELEASE_TAG="${{ inputs.release_tag }}"
           elif [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
@@ -68,8 +62,28 @@ jobs:
             RELEASE_TAG=""
           fi
 
+          if [[ -n "${RELEASE_TAG}" ]]; then
+            BUILD_VERSION="${RELEASE_TAG#v}"
+            ASSET_VERSION="${BUILD_VERSION}"
+          elif [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            BUILD_VERSION="${GITHUB_REF_NAME#v}"
+            ASSET_VERSION="${BUILD_VERSION}"
+          else
+            BUILD_VERSION="minimal-${GITHUB_SHA::7}"
+            ASSET_VERSION="${GITHUB_SHA::7}"
+          fi
+
+          FILE_PREFIX="rtp2httpd-minimal"
+          case "${ASSET_VERSION}" in
+            *mini*|*minimal*)
+              FILE_PREFIX="rtp2httpd"
+              ;;
+          esac
+
           echo "BUILD_VERSION=${BUILD_VERSION}" >> "$GITHUB_ENV"
           echo "RELEASE_VERSION=${BUILD_VERSION}" >> "$GITHUB_ENV"
+          echo "ASSET_VERSION=${ASSET_VERSION}" >> "$GITHUB_ENV"
+          echo "FILE_PREFIX=${FILE_PREFIX}" >> "$GITHUB_ENV"
           echo "RELEASE_TAG=${RELEASE_TAG}" >> "$GITHUB_ENV"
 
       - name: Build minimal static binary
@@ -108,7 +122,7 @@ jobs:
           fi
 
           OUTPUT_DIR="artifacts/${ARCH_SHORT}"
-          OUTPUT_NAME="rtp2httpd-minimal-${BUILD_VERSION}-${ARCH_SHORT}"
+          OUTPUT_NAME="${FILE_PREFIX}-${ASSET_VERSION}-${ARCH_SHORT}"
 
           mkdir -p "$OUTPUT_DIR"
           cp "$BINARY_PATH" "${OUTPUT_DIR}/${OUTPUT_NAME}"
@@ -217,12 +231,6 @@ jobs:
             exit 1
           fi
 
-          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            BUILD_VERSION="${GITHUB_REF_NAME#v}"
-          else
-            BUILD_VERSION="minimal-${GITHUB_SHA::7}"
-          fi
-
           if [[ -n "${{ inputs.release_tag }}" ]]; then
             RELEASE_TAG="${{ inputs.release_tag }}"
           elif [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
@@ -231,8 +239,28 @@ jobs:
             RELEASE_TAG=""
           fi
 
+          if [[ -n "${RELEASE_TAG}" ]]; then
+            BUILD_VERSION="${RELEASE_TAG#v}"
+            ASSET_VERSION="${BUILD_VERSION}"
+          elif [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            BUILD_VERSION="${GITHUB_REF_NAME#v}"
+            ASSET_VERSION="${BUILD_VERSION}"
+          else
+            BUILD_VERSION="minimal-${GITHUB_SHA::7}"
+            ASSET_VERSION="${GITHUB_SHA::7}"
+          fi
+
+          FILE_PREFIX="rtp2httpd-minimal"
+          case "${ASSET_VERSION}" in
+            *mini*|*minimal*)
+              FILE_PREFIX="rtp2httpd"
+              ;;
+          esac
+
           echo "BUILD_VERSION=${BUILD_VERSION}" >> "$GITHUB_ENV"
           echo "RELEASE_VERSION=${BUILD_VERSION}" >> "$GITHUB_ENV"
+          echo "ASSET_VERSION=${ASSET_VERSION}" >> "$GITHUB_ENV"
+          echo "FILE_PREFIX=${FILE_PREFIX}" >> "$GITHUB_ENV"
           echo "RELEASE_TAG=${RELEASE_TAG}" >> "$GITHUB_ENV"
 
       - name: Build mt7620-optimized minimal static binary
@@ -260,7 +288,7 @@ jobs:
           fi
 
           OUTPUT_DIR="artifacts/${ARCH_SHORT}"
-          OUTPUT_NAME="rtp2httpd-minimal-${BUILD_VERSION}-${ARCH_SHORT}"
+          OUTPUT_NAME="${FILE_PREFIX}-${ASSET_VERSION}-${ARCH_SHORT}"
 
           mkdir -p "$OUTPUT_DIR"
           cp "$BINARY_PATH" "${OUTPUT_DIR}/${OUTPUT_NAME}"
@@ -359,12 +387,6 @@ jobs:
             exit 1
           fi
 
-          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            BUILD_VERSION="${GITHUB_REF_NAME#v}"
-          else
-            BUILD_VERSION="minimal-${GITHUB_SHA::7}"
-          fi
-
           if [[ -n "${{ inputs.release_tag }}" ]]; then
             RELEASE_TAG="${{ inputs.release_tag }}"
           elif [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
@@ -373,8 +395,28 @@ jobs:
             RELEASE_TAG=""
           fi
 
+          if [[ -n "${RELEASE_TAG}" ]]; then
+            BUILD_VERSION="${RELEASE_TAG#v}"
+            ASSET_VERSION="${BUILD_VERSION}"
+          elif [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            BUILD_VERSION="${GITHUB_REF_NAME#v}"
+            ASSET_VERSION="${BUILD_VERSION}"
+          else
+            BUILD_VERSION="minimal-${GITHUB_SHA::7}"
+            ASSET_VERSION="${GITHUB_SHA::7}"
+          fi
+
+          FILE_PREFIX="rtp2httpd-minimal"
+          case "${ASSET_VERSION}" in
+            *mini*|*minimal*)
+              FILE_PREFIX="rtp2httpd"
+              ;;
+          esac
+
           echo "BUILD_VERSION=${BUILD_VERSION}" >> "$GITHUB_ENV"
           echo "RELEASE_VERSION=${BUILD_VERSION}" >> "$GITHUB_ENV"
+          echo "ASSET_VERSION=${ASSET_VERSION}" >> "$GITHUB_ENV"
+          echo "FILE_PREFIX=${FILE_PREFIX}" >> "$GITHUB_ENV"
           echo "RELEASE_TAG=${RELEASE_TAG}" >> "$GITHUB_ENV"
 
       - name: Build minimal OpenWrt packages in SDK container
@@ -459,7 +501,7 @@ jobs:
           fi
 
           OUTPUT_DIR="artifacts/openwrt-mipsel_24kc-mt7620"
-          OUTPUT_NAME="rtp2httpd-minimal-${BUILD_VERSION}-openwrt-mipsel_24kc.ipk"
+          OUTPUT_NAME="${FILE_PREFIX}-${ASSET_VERSION}-openwrt-mipsel_24kc.ipk"
           LUCI_NAME="$(basename "${LUCI_PATH}")"
           I18N_NAME="$(basename "${I18N_PATH}")"
 
