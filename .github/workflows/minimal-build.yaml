@@ -378,23 +378,43 @@ jobs:
         id: prepare
         run: |
           PKG_PATH="$(find bin/packages/mipsel_24kc/action -maxdepth 1 -name 'rtp2httpd-minimal_*.ipk' | head -n 1)"
+          LUCI_PATH="$(find bin/packages -type f -name 'luci-app-rtp2httpd-minimal*.ipk' | head -n 1)"
+          I18N_PATH="$(find bin/packages -type f -name 'luci-i18n-rtp2httpd-minimal-zh*ipk' | head -n 1)"
 
           if [[ -z "${PKG_PATH}" ]]; then
             echo "Error: OpenWrt package not found"
             find bin -maxdepth 4 -type f | sort
             exit 1
           fi
+          if [[ -z "${LUCI_PATH}" ]]; then
+            echo "Error: minimal LuCI package not found"
+            find bin -maxdepth 6 -type f | sort
+            exit 1
+          fi
+          if [[ -z "${I18N_PATH}" ]]; then
+            echo "Error: minimal LuCI i18n package not found"
+            find bin -maxdepth 6 -type f | sort
+            exit 1
+          fi
 
           OUTPUT_DIR="artifacts/openwrt-mipsel_24kc-mt7620"
           OUTPUT_NAME="rtp2httpd-minimal-${BUILD_VERSION}-openwrt-mipsel_24kc.ipk"
+          LUCI_NAME="$(basename "${LUCI_PATH}")"
+          I18N_NAME="$(basename "${I18N_PATH}")"
 
           mkdir -p "${OUTPUT_DIR}"
           cp "${PKG_PATH}" "${OUTPUT_DIR}/${OUTPUT_NAME}"
+          cp "${LUCI_PATH}" "${OUTPUT_DIR}/${LUCI_NAME}"
+          cp "${I18N_PATH}" "${OUTPUT_DIR}/${I18N_NAME}"
           ls -lh "${OUTPUT_DIR}/${OUTPUT_NAME}"
+          ls -lh "${OUTPUT_DIR}/${LUCI_NAME}"
+          ls -lh "${OUTPUT_DIR}/${I18N_NAME}"
 
           echo "artifact_dir=${OUTPUT_DIR}" >> "$GITHUB_OUTPUT"
           echo "artifact_name=rtp2httpd-minimal-openwrt-mipsel_24kc" >> "$GITHUB_OUTPUT"
           echo "package_name=${OUTPUT_NAME}" >> "$GITHUB_OUTPUT"
+          echo "luci_name=${LUCI_NAME}" >> "$GITHUB_OUTPUT"
+          echo "i18n_name=${I18N_NAME}" >> "$GITHUB_OUTPUT"
 
       - name: Generate package report
         run: |
@@ -497,6 +517,8 @@ jobs:
           gh release upload \
             --repo ${{ github.repository }} \
             "${RELEASE_TAG}" \
-            "${{ steps.prepare.outputs.artifact_dir }}/${{ steps.prepare.outputs.package_name }}"
+            "${{ steps.prepare.outputs.artifact_dir }}/${{ steps.prepare.outputs.package_name }}" \
+            "${{ steps.prepare.outputs.artifact_dir }}/${{ steps.prepare.outputs.luci_name }}" \
+            "${{ steps.prepare.outputs.artifact_dir }}/${{ steps.prepare.outputs.i18n_name }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

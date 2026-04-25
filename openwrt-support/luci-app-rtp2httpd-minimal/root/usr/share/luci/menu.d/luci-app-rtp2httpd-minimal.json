@@ -1,0 +1,13 @@
+{
+  "admin/services/rtp2httpd-minimal": {
+    "title": "rtp2httpd",
+    "action": {
+      "type": "view",
+      "path": "rtp2httpd-minimal"
+    },
+    "depends": {
+      "acl": ["luci-app-rtp2httpd-minimal"],
+      "uci": { "rtp2httpd": true }
+    }
+  }
+}

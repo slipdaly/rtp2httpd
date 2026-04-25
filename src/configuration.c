@@ -960,78 +960,101 @@ int config_reload(int *out_bind_changed) {
 
 void usage(FILE *f, char *progname) {
   char *prog = basename(progname);
-  fprintf(
-      f, PACKAGE
-      " - Multicast RTP to Unicast HTTP stream convertor\n"
-      "\n"
-      "Version " VERSION "\n"
-      "\n"
-      "This program is free software; you can redistribute it and/or modify\n"
-      "it under the terms of the GNU General Public License version 2\n"
-      "as published by the Free Software Foundation.\n");
-  fprintf(
-      f,
-      "\n"
-      "Usage: %s [options]\n"
-      "\n"
-      "Options:\n"
-      "\t-h --help            Show this help\n"
-      "\t-v --verbose         Increase verbosity (0=FATAL, 1=ERROR, 2=WARN, "
-      "3=INFO, 4=DEBUG)\n"
-      "\t-q --quiet           Report only fatal errors\n"
-      "\t-U --noudpxy         Disable UDPxy compatibility\n"
-      "\t-m --maxclients <n>  Serve max n requests simultaneously (default 5)\n"
-      "\t-w --workers <n>     Number of worker processes with SO_REUSEPORT "
-      "(default 1)\n"
-      "\t-b --buffer-pool-max-size <n> Maximum number of buffers in zero-copy "
-      "pool (default 16384)\n"
-      "\t-B --udp-rcvbuf-size <bytes> UDP socket receive buffer size for "
-      "multicast/FCC/RTSP (default 524288 = 512KB)\n"
-      "\t-l --listen [addr:]port  Address/port to bind (default ANY:5140)\n"
-      "\t-c --config <file>   Read this file for configuration, instead of the "
-      "default one\n"
-      "\t-C --noconfig        Do not read the default config\n"
-      "\t-P --fcc-listen-port-range <start[-end]>  Restrict FCC UDP listen "
-      "sockets to specific ports\n"
-      "\t-H --hostname <hostname> Hostname to check in the Host: HTTP header "
-      "(default none)\n"
-      "\t-X --xff             Enable X-Forwarded-For header recognize "
-      "(default: off)\n"
-      "\t-T --r2h-token <token>   Authentication token for HTTP requests "
-      "(default none)\n"
-      "\t-i --upstream-interface <interface>  Default interface for all "
-      "upstream traffic (lowest priority)\n"
-      "\t-f --upstream-interface-fcc <interface>  Interface for FCC unicast "
-      "traffic (overrides -i)\n"
-      "\t-t --upstream-interface-rtsp <interface>  Interface for RTSP unicast "
-      "traffic (overrides -i)\n"
-      "\t-r --upstream-interface-multicast <interface>  Interface for "
-      "multicast traffic (overrides -i)\n"
-      "\t-y --upstream-interface-http <interface>  Interface for HTTP proxy "
-      "upstream traffic (overrides -i)\n"
-      "\t-R --mcast-rejoin-interval <seconds>  Periodic multicast rejoin "
-      "interval (0=disabled, default 0)\n"
-      "\t-F --ffmpeg-path <path>  Path to ffmpeg executable (default: ffmpeg)\n"
-      "\t-A --ffmpeg-args <args>  Additional ffmpeg arguments (default: "
-      "-hwaccel none)\n"
-      "\t-S --video-snapshot      Enable video snapshot feature (default: "
-      "off)\n"
-      "\t-s --status-page-path <path>  HTTP path for status UI (default: "
-      "/status)\n"
-      "\t-p --player-page-path <path>  HTTP path for player UI (default: "
-      "/player)\n"
-      "\t-M --external-m3u <url>  External M3U playlist URL (file://, http://, "
-      "https://)\n"
-      "\t-I --external-m3u-update-interval <seconds>  Auto-update interval "
-      "(default: 7200 = 2h, 0=disabled)\n"
-      "\t-Z --zerocopy-on-send    Enable zero-copy send with MSG_ZEROCOPY for "
-      "better performance (default: off)\n"
-      "\t-N --rtsp-stun-server <host:port>  STUN server for RTSP NAT traversal "
-      "(default: disabled)\n"
-      "\t-O --cors-allow-origin <origin>  Set Access-Control-Allow-Origin header "
-      "(default: disabled)\n"
-      "\t                     default " CONFIGFILE "\n",
-      prog);
+  fprintf(f, PACKAGE
+             " - Multicast RTP to Unicast HTTP stream convertor\n"
+             "\n"
+             "Version " VERSION "\n"
+             "\n"
+             "This program is free software; you can redistribute it and/or modify\n"
+             "it under the terms of the GNU General Public License version 2\n"
+             "as published by the Free Software Foundation.\n"
+             "\n"
+             "Usage: %s [options]\n"
+             "\n"
+             "Options:\n"
+             "\t-h --help            Show this help\n"
+             "\t-v --verbose         Increase verbosity (0=FATAL, 1=ERROR, 2=WARN, "
+             "3=INFO, 4=DEBUG)\n"
+             "\t-q --quiet           Report only fatal errors\n"
+             "\t-U --noudpxy         Disable UDPxy compatibility\n"
+             "\t-m --maxclients <n>  Serve max n requests simultaneously (default 5)\n"
+             "\t-w --workers <n>     Number of worker processes with SO_REUSEPORT "
+             "(default 1)\n"
+             "\t-b --buffer-pool-max-size <n> Maximum number of buffers in zero-copy "
+             "pool (default 16384)\n"
+             "\t-l --listen [addr:]port  Address/port to bind (default ANY:5140)\n"
+             "\t-c --config <file>   Read this file for configuration, instead of the "
+             "default one\n"
+             "\t-C --noconfig        Do not read the default config\n"
+             "\t-H --hostname <hostname> Hostname to check in the Host: HTTP header "
+             "(default none)\n"
+             "\t-X --xff             Enable X-Forwarded-For header recognize "
+             "(default: off)\n"
+             "\t-T --r2h-token <token>   Authentication token for HTTP requests "
+             "(default none)\n"
+             "\t-i --upstream-interface <interface>  Default interface for all "
+             "upstream traffic (lowest priority)\n"
+             "\t-r --upstream-interface-multicast <interface>  Interface for "
+             "multicast traffic (overrides -i)\n"
+             "\t-R --mcast-rejoin-interval <seconds>  Periodic multicast rejoin "
+             "interval (0=disabled, default 0)\n"
+             "\t-Z --zerocopy-on-send    Enable zero-copy send with MSG_ZEROCOPY for "
+             "better performance (default: off)\n"
+             "\t-O --cors-allow-origin <origin>  Set Access-Control-Allow-Origin header "
+             "(default: disabled)\n",
+          prog);
+#if R2H_FEATURE_FCC || R2H_FEATURE_RTSP
+  fprintf(f, "\t-B --udp-rcvbuf-size <bytes> UDP socket receive buffer size");
+#if R2H_FEATURE_FCC && R2H_FEATURE_RTSP
+  fprintf(f, " for multicast/FCC/RTSP");
+#elif R2H_FEATURE_FCC
+  fprintf(f, " for multicast/FCC");
+#else
+  fprintf(f, " for multicast/RTSP");
+#endif
+  fprintf(f, " (default 524288 = 512KB)\n");
+#else
+  fprintf(f, "\t-B --udp-rcvbuf-size <bytes> UDP socket receive buffer size for "
+             "multicast (default 524288 = 512KB)\n");
+#endif
+#if R2H_FEATURE_FCC
+  fprintf(f, "\t-P --fcc-listen-port-range <start[-end]>  Restrict FCC UDP listen "
+             "sockets to specific ports\n"
+             "\t-f --upstream-interface-fcc <interface>  Interface for FCC unicast "
+             "traffic (overrides -i)\n");
+#endif
+#if R2H_FEATURE_RTSP
+  fprintf(f, "\t-t --upstream-interface-rtsp <interface>  Interface for RTSP unicast "
+             "traffic (overrides -i)\n"
+             "\t-N --rtsp-stun-server <host:port>  STUN server for RTSP NAT traversal "
+             "(default: disabled)\n");
+#endif
+#if R2H_FEATURE_HTTP_PROXY
+  fprintf(f, "\t-y --upstream-interface-http <interface>  Interface for HTTP proxy "
+             "upstream traffic (overrides -i)\n");
+#endif
+#if R2H_FEATURE_SNAPSHOT
+  fprintf(f, "\t-F --ffmpeg-path <path>  Path to ffmpeg executable (default: ffmpeg)\n"
+             "\t-A --ffmpeg-args <args>  Additional ffmpeg arguments (default: "
+             "-hwaccel none)\n"
+             "\t-S --video-snapshot      Enable video snapshot feature (default: "
+             "off)\n");
+#endif
+#if R2H_FEATURE_STATUS
+  fprintf(f, "\t-s --status-page-path <path>  HTTP path for status UI (default: "
+             "/status)\n");
+#endif
+#if R2H_FEATURE_WEB_UI
+  fprintf(f, "\t-p --player-page-path <path>  HTTP path for player UI (default: "
+             "/player)\n");
+#endif
+#if R2H_FEATURE_M3U
+  fprintf(f, "\t-M --external-m3u <url>  External M3U playlist URL (file://, http://, "
+             "https://)\n"
+             "\t-I --external-m3u-update-interval <seconds>  Auto-update interval "
+             "(default: 7200 = 2h, 0=disabled)\n");
+#endif
+  fprintf(f, "\t                     default " CONFIGFILE "\n");
 }
 
 void parse_bind_cmd(char *arg) {

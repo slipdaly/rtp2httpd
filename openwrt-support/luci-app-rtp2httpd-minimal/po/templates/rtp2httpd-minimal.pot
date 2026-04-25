@@ -1,0 +1,116 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8"
+
+msgid "Access & Advanced"
+msgstr ""
+
+msgid "Auto restart after crash"
+msgstr ""
+
+msgid "Basic Settings"
+msgstr ""
+
+msgid "Buffer Pool Max Size"
+msgstr ""
+
+msgid "CORS Allow Origin"
+msgstr ""
+
+msgid "Config File Content"
+msgstr ""
+
+msgid "Default interface for upstream traffic. Leave empty to use routing table."
+msgstr ""
+
+msgid "Edit the content of /etc/rtp2httpd.conf"
+msgstr ""
+
+msgid "Enabled"
+msgstr ""
+
+msgid "Grant UCI access for luci-app-rtp2httpd-minimal"
+msgstr ""
+
+msgid "Hostname"
+msgstr ""
+
+msgid "If set, all HTTP requests must include matching r2h-token query parameter."
+msgstr ""
+
+msgid "Interface to use for multicast RTP/UDP upstream traffic (default: use routing table)"
+msgstr ""
+
+msgid "Logging level"
+msgstr ""
+
+msgid "Max clients allowed"
+msgstr ""
+
+msgid "Maximum number of buffers in zero-copy pool. Each buffer is 1536 bytes."
+msgstr ""
+
+msgid "Minimal rtp2httpd build for direct RTP/UDP to HTTP streaming. Unsupported features such as status UI, player, M3U/EPG, RTSP, HTTP proxy, snapshot, FCC and FEC are intentionally hidden."
+msgstr ""
+
+msgid "Multicast Rejoin Interval"
+msgstr ""
+
+msgid "Network & Performance"
+msgstr ""
+
+msgid "Periodic multicast rejoin interval in seconds (0=disabled, default 0)."
+msgstr ""
+
+msgid "Port"
+msgstr ""
+
+msgid "R2H Token"
+msgstr ""
+
+msgid "Respawn"
+msgstr ""
+
+msgid "Set Access-Control-Allow-Origin header to enable CORS. Leave empty to disable."
+msgstr ""
+
+msgid "UDP Receive Buffer Size"
+msgstr ""
+
+msgid "UDP socket receive buffer size in bytes for multicast traffic."
+msgstr ""
+
+msgid "Upstream Interface"
+msgstr ""
+
+msgid "Upstream Multicast Interface"
+msgstr ""
+
+msgid "Use Config File"
+msgstr ""
+
+msgid "Use X-Forwarded-For and related proxy headers when running behind a reverse proxy."
+msgstr ""
+
+msgid "Use config file instead of individual options"
+msgstr ""
+
+msgid "When configured, HTTP Host header must match this value to allow access."
+msgstr ""
+
+msgid "Workers"
+msgstr ""
+
+msgid "X-Forwarded-For"
+msgstr ""
+
+msgid "Zero-Copy on Send"
+msgstr ""
+
+msgid "Enable zero-copy send with MSG_ZEROCOPY for better performance."
+msgstr ""
+
+msgid "Number of worker processes. Set to 1 for resource-constrained devices."
+msgstr ""
+
+msgid "rtp2httpd"
+msgstr ""

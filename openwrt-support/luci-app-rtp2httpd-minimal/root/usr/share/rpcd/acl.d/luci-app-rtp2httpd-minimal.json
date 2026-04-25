@@ -1,0 +1,17 @@
+{
+  "luci-app-rtp2httpd-minimal": {
+    "description": "Grant UCI access for luci-app-rtp2httpd-minimal",
+    "read": {
+      "uci": ["rtp2httpd"],
+      "file": {
+        "/etc/rtp2httpd.conf": ["read"]
+      }
+    },
+    "write": {
+      "uci": ["rtp2httpd"],
+      "file": {
+        "/etc/rtp2httpd.conf": ["write"]
+      }
+    }
+  }
+}

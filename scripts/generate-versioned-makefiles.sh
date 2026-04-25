@@ -101,6 +101,22 @@ awk -v version="$RELEASE_VERSION" '
   { print }
 ' openwrt-support/luci-app-rtp2httpd/Makefile > openwrt-support/luci-app-rtp2httpd/Makefile.versioned
 
+# Process luci-app-rtp2httpd-minimal Makefile
+awk -v version="$RELEASE_VERSION" '
+  /^# Extract version from git tags/ { next }
+  /^# For firmware maintainers:/ { next }
+  /^# version and PKG_HASH/ { next }
+  /^# See https:\/\/rtp2httpd.com/ { next }
+  /^RELEASE_VERSION:=/ {
+    print "RELEASE_VERSION:=" version
+    while (/\\$/) {
+      if ((getline) <= 0) break
+    }
+    next
+  }
+  { print }
+' openwrt-support/luci-app-rtp2httpd-minimal/Makefile > openwrt-support/luci-app-rtp2httpd-minimal/Makefile.versioned
+
 echo "=== rtp2httpd/Makefile.versioned ==="
 cat openwrt-support/rtp2httpd/Makefile.versioned
 echo ""
@@ -109,3 +125,6 @@ cat openwrt-support/rtp2httpd-minimal/Makefile.versioned
 echo ""
 echo "=== luci-app-rtp2httpd/Makefile.versioned ==="
 cat openwrt-support/luci-app-rtp2httpd/Makefile.versioned
+echo ""
+echo "=== luci-app-rtp2httpd-minimal/Makefile.versioned ==="
+cat openwrt-support/luci-app-rtp2httpd-minimal/Makefile.versioned
